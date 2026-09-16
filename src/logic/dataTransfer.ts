@@ -1,43 +1,27 @@
 import type { WeightEntry } from '../types';
 
-const CSV_HEADER = 'date,weightKg';
+const CSV_HEADER = 'date,weightKg,note';
 
 /**
- * Converts weight entries into CSV text (date,weightKg), sorted ascending by date.
+ * Wraps a CSV field value in quotes and escapes embedded quotes, if it contains a comma,
+ * quote, or newline that would otherwise break column parsing.
+ * @param value - raw field value
+ * @returns a CSV-safe field
+ */
+function csvField(value: string): string {
+  if (/[",\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`;
+  return value;
+}
+
+/**
+ * Converts weight entries into CSV text (date,weightKg,note), sorted ascending by date.
  * @param entries - entries to export
  * @returns CSV text including a header row
  */
 export function entriesToCsv(entries: WeightEntry[]): string {
   const sorted = [...entries].sort((a, b) => a.date.localeCompare(b.date));
-  const rows = sorted.map((e) => `${e.date},${e.weightKg}`);
+  const rows = sorted.map((e) => `${e.date},${e.weightKg},${csvField(e.note ?? '')}`);
   return [CSV_HEADER, ...rows].join('\n');
-}
-
-/**
- * Converts weight entries into a SpreadsheetML (Excel 2003 XML) document. Excel opens
- * this natively as a real spreadsheet, unlike the common "HTML table saved as .xls"
- * trick, which triggers a "file format doesn't match extension" warning on open.
- * @param entries - entries to export
- * @returns SpreadsheetML XML text
- */
-export function entriesToXlsXml(entries: WeightEntry[]): string {
-  const sorted = [...entries].sort((a, b) => a.date.localeCompare(b.date));
-  const rows = sorted
-    .map(
-      (e) =>
-        `<Row><Cell><Data ss:Type="String">${e.date}</Data></Cell><Cell><Data ss:Type="Number">${e.weightKg}</Data></Cell></Row>`,
-    )
-    .join('');
-  return `<?xml version="1.0"?>
-<?mso-application progid="Excel.Sheet"?>
-<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
-  <Worksheet ss:Name="שקלולי">
-    <Table>
-      <Row><Cell><Data ss:Type="String">תאריך</Data></Cell><Cell><Data ss:Type="String">משקל (ק"ג)</Data></Cell></Row>
-      ${rows}
-    </Table>
-  </Worksheet>
-</Workbook>`;
 }
 
 /**
@@ -61,9 +45,38 @@ export function exportEntriesAsCsv(entries: WeightEntry[]): void {
   downloadTextFile(entriesToCsv(entries), 'shekaluli-weights.csv', 'text/csv;charset=utf-8');
 }
 
-/** Downloads all weight entries as an Excel-compatible .xls file. */
-export function exportEntriesAsXls(entries: WeightEntry[]): void {
-  downloadTextFile(entriesToXlsXml(entries), 'shekaluli-weights.xls', 'application/vnd.ms-excel');
+/**
+ * Splits one CSV line into fields, honoring double-quoted fields (which may contain
+ * commas, newlines already stripped by line-splitting, and "" as an escaped quote).
+ * @param line - a single CSV line
+ * @returns the line's unquoted field values, in order
+ */
+function splitCsvLine(line: string): string[] {
+  const fields: string[] = [];
+  let field = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"' && line[i + 1] === '"') {
+        field += '"';
+        i++;
+      } else if (ch === '"') {
+        inQuotes = false;
+      } else {
+        field += ch;
+      }
+    } else if (ch === '"') {
+      inQuotes = true;
+    } else if (ch === ',') {
+      fields.push(field);
+      field = '';
+    } else {
+      field += ch;
+    }
+  }
+  fields.push(field);
+  return fields;
 }
 
 /**
@@ -80,11 +93,11 @@ export function parseCsvToEntries(text: string): WeightEntry[] {
     .map((l) => l.trim())
     .filter(Boolean);
   for (const line of lines) {
-    const [dateRaw, weightRaw] = line.split(',').map((p) => p.trim());
+    const [dateRaw, weightRaw, noteRaw] = splitCsvLine(line).map((p) => p.trim());
     if (!/^\d{4}-\d{2}-\d{2}$/.test(dateRaw)) continue;
     const weightKg = Number(weightRaw);
     if (!Number.isFinite(weightKg) || weightKg <= 0) continue;
-    entries.push({ date: dateRaw, weightKg });
+    entries.push({ date: dateRaw, weightKg, ...(noteRaw ? { note: noteRaw } : {}) });
   }
   return entries;
 }

@@ -47,7 +47,7 @@ src/
     storage.ts                localStorage read/write helpers (profile + entries)
     storageQuota.ts            localStorage usage estimate + quota-exceeded detection
     theme.ts                    Theme (light/dark) persistence + applying the `dark` class to <html>
-    dataTransfer.ts              CSV/XLS export and CSV import parsing
+    dataTransfer.ts              CSV export and import parsing
     bmi.ts                        BMI math, WHO threshold constants, and entry/latest BMI selectors
     stats.ts                       Period-change, goal-progress-percent, and lowest/highest-entry calculations
     dates.ts                        ISO -> dd/mm/yyyy display formatting, plus today()

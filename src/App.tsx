@@ -51,7 +51,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-surface-container-low font-body-md text-on-surface antialiased">
       <div className="relative mx-auto flex min-h-screen max-w-md flex-col bg-surface shadow-[0_1px_8px_rgba(0,0,0,0.04)]">
-        <Header photoBase64={profile.photoBase64} />
+        <Header photoBase64={profile.photoBase64} name={profile.name} />
 
         <main className="w-full flex-1 bg-surface px-4 pt-20 pb-24">
           <AppRoutes

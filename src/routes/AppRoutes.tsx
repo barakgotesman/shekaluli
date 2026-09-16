@@ -1,7 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import type { Profile, WeightEntry } from '../types';
 import type { Theme } from '../logic/theme';
-import type { ExportFormat } from '../hooks/useAppData';
 import GraphPage from '../pages/GraphPage';
 import HistoryPage from '../pages/HistoryPage';
 import StatsPage from '../pages/StatsPage';
@@ -13,7 +12,7 @@ interface Props {
   theme: Theme;
   onDeleteEntry: (date: string) => void;
   onEditEntry: (entry: WeightEntry) => void;
-  onExport: (format: ExportFormat) => void;
+  onExport: () => void;
   onImportFile: (file: File) => Promise<void>;
   onThemeChange: (theme: Theme) => void;
   onEditProfile: () => void;

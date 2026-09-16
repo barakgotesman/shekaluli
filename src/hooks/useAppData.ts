@@ -10,9 +10,7 @@ import {
 } from '../logic/storage';
 import { applyTheme, loadTheme } from '../logic/theme';
 import type { Theme } from '../logic/theme';
-import { exportEntriesAsCsv, exportEntriesAsXls, parseCsvToEntries, readFileAsText } from '../logic/dataTransfer';
-
-export type ExportFormat = 'csv' | 'xls';
+import { exportEntriesAsCsv, parseCsvToEntries, readFileAsText } from '../logic/dataTransfer';
 
 /**
  * Owns the app's persisted state (profile, weight entries, theme) and every operation
@@ -90,10 +88,9 @@ export function useAppData() {
     }
   }
 
-  /** Downloads all weight entries in the given format. */
-  function exportEntries(format: ExportFormat) {
-    if (format === 'csv') exportEntriesAsCsv(entries);
-    else exportEntriesAsXls(entries);
+  /** Downloads all weight entries as a CSV file. */
+  function exportEntries() {
+    exportEntriesAsCsv(entries);
   }
 
   /** Switches the active theme, persisting it and updating the document root class. */

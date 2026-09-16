@@ -11,7 +11,7 @@ Frontend-only — no backend, no auth, no accounts. All data is stored in the br
 - Full history browser, grouped by year and month
 - Summary statistics (15-day / 1-month / 3-month change, all-time low/high)
 - Light/dark theme
-- CSV/Excel export and CSV import
+- CSV export and import
 - PDF progress report generation, for sharing with a coach
 - Installable as a PWA
 

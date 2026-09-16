@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import type { Profile, WeightEntry } from '../types';
 import { bmiCategory, getEntryBmi } from '../logic/bmi';
 import { formatDateIL, formatDayIL } from '../logic/dates';
-import type { ExportFormat } from '../hooks/useAppData';
 import Icon from '../components/Icon';
 
 interface Props {
@@ -10,7 +9,7 @@ interface Props {
   profile: Profile;
   onDelete: (date: string) => void;
   onEdit: (entry: WeightEntry) => void;
-  onExport: (format: ExportFormat) => void;
+  onExport: () => void;
 }
 
 const MONTHS_HE = [
@@ -111,12 +110,12 @@ function matchesFilters(entry: WeightEntry, filters: AdvancedFilters): boolean {
 /**
  * Full history list of logged weights, grouped by year and month (accordion-style),
  * each row showing weight, BMI, and category with edit and delete actions, filterable
- * by a date/weight search box. Also renders an export dialog (CSV / Excel).
+ * by a date/weight search box.
  * @param entries - all weight entries, any order
  * @param profile - user profile, used to compute BMI per entry
  * @param onDelete - called with a date (YYYY-MM-DD) when its row's delete button is clicked
  * @param onEdit - called with the entry when its row's edit button is clicked
- * @param onExport - called with the chosen format when an export option is picked
+ * @param onExport - called when the export button is clicked
  */
 export default function HistoryPage({ entries, profile, onDelete, onEdit, onExport }: Props) {
   const [query, setQuery] = useState('');
@@ -130,18 +129,11 @@ export default function HistoryPage({ entries, profile, onDelete, onEdit, onExpo
   );
   const years = useMemo(() => groupByYearAndMonth(filteredEntries), [filteredEntries]);
   const [openMonth, setOpenMonth] = useState<string | null>(years[0]?.months[0]?.key ?? null);
-  const [showExportModal, setShowExportModal] = useState(false);
   const isSearching = query.trim().length > 0;
 
   /** Updates a single advanced-filter field. */
   function setFilter(field: keyof AdvancedFilters, value: string) {
     setFilters((f) => ({ ...f, [field]: value }));
-  }
-
-  /** Exports all entries in the given format and closes the export dialog. */
-  function handleExport(format: ExportFormat) {
-    onExport(format);
-    setShowExportModal(false);
   }
 
   if (entries.length === 0) {
@@ -163,7 +155,7 @@ export default function HistoryPage({ entries, profile, onDelete, onEdit, onExpo
           <span className="text-xs text-on-surface-variant">מעקב כרונולוגי רציף ומדויק</span>
         </div>
         <button
-          onClick={() => setShowExportModal(true)}
+          onClick={onExport}
           className="flex items-center gap-1.5 rounded-full bg-surface-container-high px-3 py-2 text-xs font-medium text-primary shadow-sm transition-all hover:bg-surface-container-highest active:scale-95"
         >
           <Icon name="ios_share" className="text-[18px]" />
@@ -403,53 +395,6 @@ export default function HistoryPage({ entries, profile, onDelete, onEdit, onExpo
           })}
         </div>
       ))}
-
-      {showExportModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-inverse-surface/40 p-4 backdrop-blur-sm sm:items-center"
-          onClick={() => setShowExportModal(false)}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="flex w-full max-w-sm flex-col gap-4 rounded-2xl bg-surface-container-lowest p-5 shadow-xl"
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Icon name="file_download" className="text-primary text-[24px]" />
-                <span className="text-base font-semibold text-on-surface">ייצוא נתוני שקילה</span>
-              </div>
-              <button
-                onClick={() => setShowExportModal(false)}
-                aria-label="סגירה"
-                className="rounded-full p-1 text-outline hover:bg-surface-container-high"
-              >
-                <Icon name="close" className="text-[20px]" />
-              </button>
-            </div>
-            <p className="text-xs text-on-surface-variant">
-              בחר את הפורמט המועדף לייצוא כל {sortedTotal} השקילות השמורות במערכת שקלולי:
-            </p>
-            <div className="grid grid-cols-2 gap-2.5">
-              <button
-                onClick={() => handleExport('xls')}
-                className="flex flex-col items-center justify-center rounded-xl bg-surface-container-low p-3.5 transition-colors hover:bg-surface-container active:scale-95"
-              >
-                <Icon name="table_view" className="text-secondary text-[28px]" />
-                <span className="mt-1 text-xs font-semibold text-on-surface">Microsoft Excel</span>
-                <span className="text-[11px] text-on-surface-variant">קובץ .xls</span>
-              </button>
-              <button
-                onClick={() => handleExport('csv')}
-                className="flex flex-col items-center justify-center rounded-xl bg-surface-container-low p-3.5 transition-colors hover:bg-surface-container active:scale-95"
-              >
-                <Icon name="description" className="text-primary text-[28px]" />
-                <span className="mt-1 text-xs font-semibold text-on-surface">קובץ CSV</span>
-                <span className="text-[11px] text-on-surface-variant">מופרד בפסיקים</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

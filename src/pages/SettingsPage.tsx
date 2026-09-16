@@ -3,7 +3,6 @@ import type { Theme } from '../logic/theme';
 import type { Profile, WeightEntry } from '../types';
 import { getStorageUsage, STORAGE_WARNING_THRESHOLD_PERCENT } from '../logic/storageQuota';
 import { calculateAge } from '../logic/dates';
-import type { ExportFormat } from '../hooks/useAppData';
 import Icon from '../components/Icon';
 
 interface Props {
@@ -13,12 +12,12 @@ interface Props {
   profile: Profile;
   entries: WeightEntry[];
   onImportFile: (file: File) => Promise<void>;
-  onExport: (format: ExportFormat) => void;
+  onExport: () => void;
 }
 
 /**
  * Settings screen: real theme (light/dark) picker, profile summary/edit shortcut, real
- * CSV/Excel export and CSV import, and a localStorage usage indicator that warns as the
+ * CSV export/import, and a localStorage usage indicator that warns as the
  * browser's storage quota is approached. The preferences toggles (reminder, unit, sound)
  * are inert — they update their own visual state only, since that functionality doesn't
  * exist yet.
@@ -28,7 +27,7 @@ interface Props {
  * @param profile - user profile, shown in the personal-details summary card
  * @param entries - all weight entries, used for export and the storage usage estimate
  * @param onImportFile - called with a selected file to import (CSV parsing happens upstream)
- * @param onExport - called with the chosen format when an export option is picked
+ * @param onExport - called when the export button is clicked
  */
 export default function SettingsPage({
   theme,
@@ -42,7 +41,6 @@ export default function SettingsPage({
   const [reminderOn, setReminderOn] = useState(true);
   const [soundOn, setSoundOn] = useState(true);
   const [unit, setUnit] = useState<'kg' | 'lbs'>('kg');
-  const [showExportMenu, setShowExportMenu] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Recomputed on every render so the bar reflects the latest write; localStorage reads
@@ -162,57 +160,22 @@ export default function SettingsPage({
       <section className="flex flex-col gap-3">
         <SectionTitle icon="lock_reset" label="גיבוי ופרטיות" />
         <div className="flex flex-col gap-2 rounded-2xl bg-surface-container-lowest p-3.5 shadow-sm">
-          <div className="relative">
-            <button
-              onClick={() => setShowExportMenu((v) => !v)}
-              disabled={entries.length === 0}
-              className="flex w-full items-center justify-between rounded-xl p-3 text-right text-on-surface transition-colors hover:bg-surface-container-low disabled:cursor-not-allowed disabled:text-on-surface-variant disabled:hover:bg-transparent"
-            >
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-surface-container text-primary">
-                  <Icon name="file_download" className="text-[20px]" />
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-sm font-medium text-on-surface">ייצוא כל הנתונים</span>
-                  <span className="text-xs text-on-surface-variant">קובץ CSV או Excel (.xls)</span>
-                </div>
+          <button
+            onClick={onExport}
+            disabled={entries.length === 0}
+            className="flex w-full items-center justify-between rounded-xl p-3 text-right text-on-surface transition-colors hover:bg-surface-container-low disabled:cursor-not-allowed disabled:text-on-surface-variant disabled:hover:bg-transparent"
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-surface-container text-primary">
+                <Icon name="file_download" className="text-[20px]" />
               </div>
-              <Icon
-                name="expand_more"
-                className={`text-on-surface-variant text-[20px] transition-transform duration-300 ${showExportMenu ? 'rotate-180' : ''}`}
-              />
-            </button>
-            <div
-              className={`grid transition-all duration-300 ease-out ${
-                showExportMenu ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
-              }`}
-            >
-              <div className="overflow-hidden">
-                <div className="grid grid-cols-2 gap-2 px-3 pt-1 pb-2">
-                  <button
-                    onClick={() => {
-                      onExport('xls');
-                      setShowExportMenu(false);
-                    }}
-                    className="flex items-center justify-center gap-1.5 rounded-lg bg-surface-container-low py-2.5 text-xs font-semibold text-on-surface transition-colors hover:bg-surface-container"
-                  >
-                    <Icon name="table_view" className="text-secondary text-[16px]" />
-                    Excel (.xls)
-                  </button>
-                  <button
-                    onClick={() => {
-                      onExport('csv');
-                      setShowExportMenu(false);
-                    }}
-                    className="flex items-center justify-center gap-1.5 rounded-lg bg-surface-container-low py-2.5 text-xs font-semibold text-on-surface transition-colors hover:bg-surface-container"
-                  >
-                    <Icon name="description" className="text-primary text-[16px]" />
-                    CSV
-                  </button>
-                </div>
+              <div className="flex flex-col">
+                <span className="text-sm font-medium text-on-surface">ייצוא כל הנתונים</span>
+                <span className="text-xs text-on-surface-variant">קובץ CSV</span>
               </div>
             </div>
-          </div>
+            <Icon name="arrow_back_ios_new" className="text-[20px]" />
+          </button>
 
           <button
             onClick={() => fileInputRef.current?.click()}
