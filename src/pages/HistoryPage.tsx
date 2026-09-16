@@ -174,11 +174,13 @@ export default function HistoryPage({ entries, profile, onDelete, onEdit, onExpo
               <span className="text-base font-bold text-on-surface">{sortedTotal} שקילות מתועדות</span>
             </div>
           </div>
-          <div className="flex flex-col items-end text-left">
-            <span className="rounded-full bg-secondary-container px-2.5 py-0.5 text-xs font-semibold text-secondary">
-              {totalDelta.toFixed(1)} ק״ג בסה״כ
-            </span>
-          </div>
+          {sortedTotal > 1 && (
+            <div className="flex flex-col items-end text-left">
+              <span className="rounded-full bg-secondary-container px-2.5 py-0.5 text-xs font-semibold text-secondary">
+                {totalDelta.toFixed(1)} ק״ג בסה״כ
+              </span>
+            </div>
+          )}
         </div>
       </div>
 

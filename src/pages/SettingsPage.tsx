@@ -227,6 +227,7 @@ export default function SettingsPage({
       </section>
 
       <footer className="flex flex-col items-center justify-center gap-1.5 pt-2 pb-2 text-center">
+        <img src="/favicon.svg" alt="שקלולי" className="h-10 w-10" />
         <div className="flex items-center justify-center gap-1.5 text-xs text-on-surface-variant">
           <span>פותח באהבה על ידי</span>
           <span className="font-semibold text-on-surface">Barak Gotesman</span>
