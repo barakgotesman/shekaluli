@@ -1,0 +1,120 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: "Rubik", ui-sans-serif, system-ui, sans-serif;
+
+  /* Light palette — from the Shekaluli Stitch design system (כתום וצהוב / orange & yellow) */
+  --color-primary: #ae3200;
+  --color-primary-container: #ff5a1f;
+  --color-on-primary: #ffffff;
+  --color-on-primary-container: #541400;
+  --color-primary-fixed: #ffdbd0;
+  --color-primary-fixed-dim: #ffb59e;
+
+  --color-secondary: #855300;
+  --color-secondary-container: #fea619;
+  --color-on-secondary: #ffffff;
+  --color-on-secondary-container: #684000;
+  --color-secondary-fixed: #ffddb8;
+  --color-secondary-fixed-dim: #ffb95f;
+
+  --color-tertiary: #006c49;
+  --color-tertiary-container: #00a673;
+  --color-on-tertiary: #ffffff;
+  --color-on-tertiary-container: #003220;
+  --color-tertiary-fixed: #6ffbbe;
+
+  --color-error: #ba1a1a;
+  --color-error-container: #ffdad6;
+  --color-on-error: #ffffff;
+  --color-on-error-container: #93000a;
+
+  --color-surface: #fff8f5;
+  --color-surface-dim: #e0d8d5;
+  --color-surface-bright: #fff8f5;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #faf2ee;
+  --color-surface-container: #f4ece8;
+  --color-surface-container-high: #eee7e3;
+  --color-surface-container-highest: #e9e1dd;
+  --color-on-surface: #1e1b19;
+  --color-on-surface-variant: #5b4038;
+  --color-outline: #8f7067;
+  --color-outline-variant: #e4beb3;
+  --color-inverse-surface: #33302d;
+  --color-inverse-on-surface: #f7efeb;
+}
+
+.dark {
+  --color-primary: #ffb59e;
+  --color-primary-container: #ff5a1f;
+  --color-on-primary: #5c1400;
+  --color-on-primary-container: #ffdbd0;
+  --color-primary-fixed: #852400;
+  --color-primary-fixed-dim: #ff5a1f;
+
+  --color-secondary: #ffb95f;
+  --color-secondary-container: #684000;
+  --color-on-secondary: #2a1700;
+  --color-on-secondary-container: #ffddb8;
+  --color-secondary-fixed: #684000;
+  --color-secondary-fixed-dim: #4a2e00;
+
+  --color-tertiary: #4edea3;
+  --color-tertiary-container: #005236;
+  --color-on-tertiary: #00391f;
+  --color-on-tertiary-container: #c8f7e3;
+  --color-tertiary-fixed: #005236;
+
+  --color-error: #ffb4ab;
+  --color-error-container: #93000a;
+  --color-on-error: #690005;
+  --color-on-error-container: #ffdad6;
+
+  --color-surface: #171310;
+  --color-surface-dim: #171310;
+  --color-surface-bright: #3a332e;
+  --color-surface-container-lowest: #110d0a;
+  --color-surface-container-low: #241d18;
+  --color-surface-container: #29211c;
+  --color-surface-container-high: #342b25;
+  --color-surface-container-highest: #3f342d;
+  --color-on-surface: #e9e1dd;
+  --color-on-surface-variant: #e4beb3;
+  --color-outline: #a68b81;
+  --color-outline-variant: #5b4038;
+  --color-inverse-surface: #e9e1dd;
+  --color-inverse-on-surface: #33302d;
+}
+
+html {
+  direction: rtl;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+}
+
+.material-symbols-outlined {
+  font-variation-settings:
+    "FILL" 0,
+    "wght" 500,
+    "GRAD" 0,
+    "opsz" 20;
+}
+
+@keyframes shine-sweep {
+  0% {
+    transform: translateX(-150%) skewX(-20deg);
+  }
+  100% {
+    transform: translateX(250%) skewX(-20deg);
+  }
+}
+
+.animate-shine-sweep {
+  animation: shine-sweep 3.2s ease-in-out infinite;
+}
