@@ -76,6 +76,7 @@ export default function WeightSlider({ value, onChange, min = 30, max = 250 }: P
 
       <div className="flex items-center gap-2">
         <button
+          type="button"
           onClick={() => nudge(-0.1)}
           aria-label="הפחתת 0.1 ק״ג"
           className="group flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-outline-variant/60 bg-surface-container-lowest text-primary shadow-sm transition-all hover:bg-primary-fixed active:scale-90"
@@ -128,6 +129,7 @@ export default function WeightSlider({ value, onChange, min = 30, max = 250 }: P
         </div>
 
         <button
+          type="button"
           onClick={() => nudge(0.1)}
           aria-label="הוספת 0.1 ק״ג"
           className="group flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-outline-variant/60 bg-surface-container-lowest text-primary shadow-sm transition-all hover:bg-primary-fixed active:scale-90"
