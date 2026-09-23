@@ -20,9 +20,11 @@ export function formatDateIL(isoDate: string): string {
 /**
  * Computes a person's age in whole years from their birth date, as of today.
  * @param birthDate - date of birth, YYYY-MM-DD
- * @returns age in whole years
+ * @returns age in whole years, or null if no birth date is set
  */
-export function calculateAge(birthDate: string): number {
+export function calculateAge(birthDate: string | undefined): number | null {
+  // Profiles saved before birthDate was added to the model have no such field.
+  if (!birthDate) return null;
   const [year, month, day] = birthDate.split('-').map(Number);
   const now = new Date();
   let age = now.getFullYear() - year;

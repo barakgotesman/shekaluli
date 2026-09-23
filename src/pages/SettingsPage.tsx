@@ -300,7 +300,7 @@ function ProfileStat({
 }: {
   icon: string;
   label: string;
-  value: number;
+  value: number | null;
   unit: string;
   tone?: 'primary' | 'secondary';
 }) {
@@ -309,7 +309,7 @@ function ProfileStat({
       <Icon name={icon} className={`mb-1 text-[20px] ${tone === 'secondary' ? 'text-secondary' : 'text-primary'}`} />
       <span className="text-xs text-on-surface-variant">{label}</span>
       <div className={`mt-0.5 text-base font-bold ${tone === 'secondary' ? 'text-secondary' : 'text-on-surface'}`}>
-        {value} <span className="text-xs font-normal">{unit}</span>
+        {value ?? '—'} {value !== null && <span className="text-xs font-normal">{unit}</span>}
       </div>
     </div>
   );

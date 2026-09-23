@@ -111,7 +111,7 @@ function buildReportHtml(profile: Profile, sorted: WeightEntry[]): string {
       <div class="cr-section">
         <h2>פרופיל</h2>
         <div class="cr-grid">
-          <div class="cr-card"><div class="cr-card-label">גיל</div><div class="cr-card-value">${esc(calculateAge(profile.birthDate))}</div></div>
+          <div class="cr-card"><div class="cr-card-label">גיל</div><div class="cr-card-value">${esc(calculateAge(profile.birthDate) ?? '—')}</div></div>
           <div class="cr-card"><div class="cr-card-label">גובה</div><div class="cr-card-value">${esc(profile.heightCm)} ס״מ</div></div>
           <div class="cr-card"><div class="cr-card-label">משקל נוכחי</div><div class="cr-card-value">${esc(latest.weightKg.toFixed(1))} ק״ג</div></div>
           <div class="cr-card"><div class="cr-card-label">BMI נוכחי</div><div class="cr-card-value">${esc(latestBmi.toFixed(1))}</div></div>
