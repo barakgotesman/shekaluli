@@ -118,3 +118,19 @@ body {
 .animate-shine-sweep {
   animation: shine-sweep 3.2s ease-in-out infinite;
 }
+
+/* Checkmark "pop" shown briefly on the Save button after a profile edit succeeds. */
+@keyframes save-pop {
+  0% {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.3);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}

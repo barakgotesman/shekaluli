@@ -22,9 +22,13 @@ export default function App() {
   const [editingProfile, setEditingProfile] = useState(false);
   const [modal, setModal] = useState<ModalState>({ mode: 'closed' });
 
-  /** Persists the profile and exits onboarding/edit mode, unless the save failed. */
+  /**
+   * Persists the profile. Exits edit mode after first-time onboarding (nothing left to do
+   * but land in the app), but stays open when editing an existing profile from Settings,
+   * so the user can keep making changes without reopening the form each time.
+   */
   function handleSaveProfile(p: Parameters<typeof saveProfile>[0]) {
-    if (saveProfile(p)) setEditingProfile(false);
+    if (saveProfile(p) && !profile) setEditingProfile(false);
   }
 
   /** Adds or updates a weight entry, then closes the modal. */
@@ -51,7 +55,11 @@ export default function App() {
   return (
     <div className="min-h-screen bg-surface-container-low font-body-md text-on-surface antialiased">
       <div className="relative mx-auto flex min-h-screen max-w-md flex-col bg-surface shadow-[0_1px_8px_rgba(0,0,0,0.04)]">
-        <Header photoBase64={profile.photoBase64} name={profile.name} />
+        <Header
+          photoBase64={profile.photoBase64}
+          name={profile.name}
+          onEditProfile={() => setEditingProfile(true)}
+        />
 
         <main className="w-full flex-1 bg-surface px-4 pt-20 pb-24">
           <AppRoutes

@@ -28,6 +28,7 @@ export default function OnboardingPage({ initial, onSave, onCancel }: Props) {
   const [goalWeightKg, setGoalWeightKg] = useState(initial?.goalWeightKg ?? '');
   const [photoBase64, setPhotoBase64] = useState(initial?.photoBase64);
   const [photoError, setPhotoError] = useState<string | null>(null);
+  const [justSaved, setJustSaved] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   /** Reads the selected file, downscales it, and stores it as the profile photo. */
@@ -43,12 +44,17 @@ export default function OnboardingPage({ initial, onSave, onCancel }: Props) {
     }
   }
 
-  const canSubmit =
-    name.trim().length > 0 &&
-    birthDate.length > 0 &&
-    Number(heightCm) > 0 &&
-    Number(startWeightKg) > 0 &&
-    Number(goalWeightKg) > 0;
+  // Listed by field so the disabled Save button can explain what's missing, rather than
+  // just sitting grayed out — this matters most for profiles saved before name/birthDate
+  // existed, where those fields are silently empty when the user opens this form to edit.
+  const missingFields = [
+    name.trim().length === 0 && 'שם',
+    birthDate.length === 0 && 'תאריך לידה',
+    !(Number(heightCm) > 0) && 'גובה',
+    !(Number(startWeightKg) > 0) && 'משקל התחלתי',
+    !(Number(goalWeightKg) > 0) && 'משקל יעד',
+  ].filter((f): f is string => f !== false);
+  const canSubmit = missingFields.length === 0;
 
   const heightNum = Number(heightCm);
   const startNum = Number(startWeightKg);
@@ -68,6 +74,12 @@ export default function OnboardingPage({ initial, onSave, onCancel }: Props) {
       goalWeightKg: Number(goalWeightKg),
       photoBase64,
     });
+    // Editing an existing profile keeps this form open (see App.tsx), so show a
+    // transient confirmation instead of the implicit "form closed" feedback onboarding gets.
+    if (initial) {
+      setJustSaved(true);
+      setTimeout(() => setJustSaved(false), 2000);
+    }
   }
 
   return (
@@ -154,24 +166,26 @@ export default function OnboardingPage({ initial, onSave, onCancel }: Props) {
               <button
                 type="button"
                 onClick={() => setGender('male')}
-                className={`h-[52px] rounded-xl text-sm font-semibold transition-all ${
+                className={`flex h-[52px] items-center justify-center gap-1.5 rounded-xl text-sm font-semibold transition-all ${
                   gender === 'male'
                     ? 'bg-primary text-on-primary shadow-sm'
                     : 'bg-surface-container-low text-on-surface-variant'
                 }`}
               >
-                זכר
+                <GenderSymbol gender="male" className="h-5 w-5" />
+                <span>זכר</span>
               </button>
               <button
                 type="button"
                 onClick={() => setGender('female')}
-                className={`h-[52px] rounded-xl text-sm font-semibold transition-all ${
+                className={`flex h-[52px] items-center justify-center gap-1.5 rounded-xl text-sm font-semibold transition-all ${
                   gender === 'female'
                     ? 'bg-primary text-on-primary shadow-sm'
                     : 'bg-surface-container-low text-on-surface-variant'
                 }`}
               >
-                נקבה
+                <GenderSymbol gender="female" className="h-5 w-5" />
+                <span>נקבה</span>
               </button>
             </div>
           </div>
@@ -227,14 +241,34 @@ export default function OnboardingPage({ initial, onSave, onCancel }: Props) {
             </div>
           )}
 
+          {missingFields.length > 0 && (
+            <p className="text-xs text-on-surface-variant">
+              יש למלא כדי לשמור: <span className="font-semibold text-error">{missingFields.join(', ')}</span>
+            </p>
+          )}
+
           <div className="flex gap-2 pt-3">
             <button
               type="submit"
               disabled={!canSubmit}
-              className="flex h-[50px] flex-1 items-center justify-center gap-2 rounded-full bg-primary text-sm font-semibold text-on-primary shadow-md transition-all active:scale-[0.98] disabled:opacity-40"
+              // On save, the button itself morphs to a green checkmark state for ~2s
+              // (see justSaved in handleSubmit) instead of a separate confirmation line,
+              // so the feedback lands exactly where the user's eyes already are.
+              className={`flex h-[50px] flex-1 items-center justify-center gap-2 rounded-full text-sm font-semibold shadow-md transition-all duration-300 active:scale-[0.98] disabled:opacity-40 ${
+                justSaved ? 'scale-[1.02] bg-secondary text-on-secondary' : 'bg-primary text-on-primary'
+              }`}
             >
-              <span>שמור והתחל מעקב</span>
-              <Icon name="arrow_back" className="text-[20px]" />
+              {justSaved ? (
+                <>
+                  <Icon name="check" className="text-[20px] animate-[save-pop_0.4s_ease-out]" />
+                  <span>הפרטים נשמרו</span>
+                </>
+              ) : (
+                <>
+                  <span>{initial ? 'שמירת שינויים' : 'שמור והתחל מעקב'}</span>
+                  <Icon name="arrow_back" className="text-[20px]" />
+                </>
+              )}
             </button>
             {onCancel && (
               <button
@@ -254,6 +288,30 @@ export default function OnboardingPage({ initial, onSave, onCancel }: Props) {
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * Male (♂) or female (♀) gender symbol as a plain inline SVG — drawn directly rather than
+ * pulled from the Material Symbols icon font, so it always renders even if that font fails
+ * to load, and so its stroke color follows `currentColor` in both selected/unselected states.
+ * @param gender - which symbol to draw
+ * @param className - sizing classes (e.g. "h-5 w-5")
+ */
+function GenderSymbol({ gender, className = '' }: { gender: 'male' | 'female'; className?: string }) {
+  if (gender === 'male') {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className} aria-hidden="true">
+        <circle cx="10" cy="14" r="6" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M14.5 9.5 20 4M14 4h6v6" />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className} aria-hidden="true">
+      <circle cx="12" cy="9" r="6" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v7M8.5 19h7" />
+    </svg>
   );
 }
 
