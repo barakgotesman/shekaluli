@@ -17,6 +17,100 @@ export const SHARE_PERIODS: { value: SharePeriod; label: string }[] = [
   { value: 'all', label: 'הכול' },
 ];
 
+/** Identifier of a card background style. */
+export type ShareStyleId = 'sunset' | 'ocean' | 'mint' | 'night' | 'light';
+
+/** Colors that make up one card style. All values are hard-coded so cards ignore the app theme. */
+interface ShareStyle {
+  id: ShareStyleId;
+  label: string;
+  /** CSS background for the whole card (also used for the picker swatch) */
+  bg: string;
+  /** solid color behind the gradient, used as the canvas fill */
+  canvasBg: string;
+  /** brand name and footer text, drawn directly on the background */
+  onBg: string;
+  panel: string;
+  panelShadow: string;
+  eyebrow: string;
+  num: string;
+  text: string;
+  chipBg: string;
+  chipText: string;
+  track: string;
+  fill: string;
+}
+
+/** Card background styles offered in the share modal, in display order. */
+export const SHARE_STYLES: ShareStyle[] = [
+  {
+    id: 'sunset', label: 'שקיעה',
+    bg: 'linear-gradient(160deg, #ff5a1f 0%, #ff8a3d 55%, #fea619 100%)', canvasBg: '#ff5a1f', onBg: '#ffffff',
+    panel: '#fff8f5', panelShadow: 'rgba(120, 40, 0, 0.25)', eyebrow: '#855300', num: '#ae3200', text: '#5b4038',
+    chipBg: '#d7f0e2', chipText: '#006c49', track: '#efe0d9', fill: 'linear-gradient(90deg, #fea619, #ff5a1f)',
+  },
+  {
+    id: 'ocean', label: 'ים',
+    bg: 'linear-gradient(160deg, #0b6fa4 0%, #1aa3c8 55%, #5ad1c9 100%)', canvasBg: '#0b6fa4', onBg: '#ffffff',
+    panel: '#f2fbfd', panelShadow: 'rgba(0, 50, 80, 0.3)', eyebrow: '#0b5d7a', num: '#0a5a86', text: '#33505c',
+    chipBg: '#d3f4ec', chipText: '#00695c', track: '#d9eaf0', fill: 'linear-gradient(90deg, #5ad1c9, #0b6fa4)',
+  },
+  {
+    id: 'mint', label: 'נענע',
+    bg: 'linear-gradient(160deg, #00a673 0%, #3cc48e 55%, #a6e36b 100%)', canvasBg: '#00a673', onBg: '#ffffff',
+    panel: '#f4fdf8', panelShadow: 'rgba(0, 70, 40, 0.28)', eyebrow: '#4a6b12', num: '#006c49', text: '#3b5148',
+    chipBg: '#fff0c9', chipText: '#855300', track: '#dcefe4', fill: 'linear-gradient(90deg, #a6e36b, #00a673)',
+  },
+  {
+    id: 'night', label: 'לילה',
+    bg: 'linear-gradient(160deg, #1b1340 0%, #3a1f7a 55%, #863bff 100%)', canvasBg: '#1b1340', onBg: '#ffffff',
+    panel: '#241a4d', panelShadow: 'rgba(0, 0, 0, 0.4)', eyebrow: '#ffc47a', num: '#ffffff', text: '#cfc6f0',
+    chipBg: '#3a2b73', chipText: '#9ef0c9', track: '#3a2f6b', fill: 'linear-gradient(90deg, #47bfff, #863bff)',
+  },
+  {
+    id: 'light', label: 'בהיר',
+    bg: '#fff8f5', canvasBg: '#fff8f5', onBg: '#5b4038',
+    panel: '#ffffff', panelShadow: 'rgba(120, 40, 0, 0.12)', eyebrow: '#855300', num: '#ae3200', text: '#5b4038',
+    chipBg: '#d7f0e2', chipText: '#006c49', track: '#efe0d9', fill: 'linear-gradient(90deg, #fea619, #ff5a1f)',
+  },
+];
+
+const STYLE_KEY = 'shekaluli:share-style';
+
+/**
+ * Looks up a style by id, falling back to the first one.
+ * @param id - style identifier
+ * @returns the matching style definition
+ */
+function getShareStyle(id: ShareStyleId): ShareStyle {
+  return SHARE_STYLES.find((st) => st.id === id) ?? SHARE_STYLES[0];
+}
+
+/**
+ * Reads the user's last chosen card style from localStorage.
+ * @returns the saved style id, or 'sunset' if none/invalid
+ */
+export function loadShareStyle(): ShareStyleId {
+  try {
+    const raw = localStorage.getItem(STYLE_KEY);
+    return SHARE_STYLES.some((st) => st.id === raw) ? (raw as ShareStyleId) : 'sunset';
+  } catch {
+    return 'sunset';
+  }
+}
+
+/**
+ * Remembers the chosen card style for next time (best effort; failures are ignored).
+ * @param id - style to remember
+ */
+export function saveShareStyle(id: ShareStyleId): void {
+  try {
+    localStorage.setItem(STYLE_KEY, id);
+  } catch {
+    // Not remembering the preference isn't worth surfacing an error.
+  }
+}
+
 /**
  * Relative-only numbers shown on the card. Deliberately contains no absolute weight or
  * BMI, so sharing it never exposes anything sensitive.
@@ -90,9 +184,10 @@ export function getShareStats(entries: WeightEntry[], profile: Profile, period: 
  * it looks the same regardless of the app's light/dark theme.
  * @param stats - numbers to show
  * @param logoSrc - image URL for the logo (a PNG data URL, see loadLogoPng)
+ * @param style - background/color style
  * @returns HTML string to render off-screen and rasterize
  */
-function buildShareCardHtml(stats: ShareStats, logoSrc: string): string {
+function buildShareCardHtml(stats: ShareStats, logoSrc: string, style: ShareStyle): string {
   // Anything under 50g is treated as "no change": showing "lost 0.0 kg" would look broken.
   const lost = stats.deltaKg < -0.05;
   const kg = Math.abs(stats.deltaKg).toFixed(1);
@@ -118,22 +213,22 @@ function buildShareCardHtml(stats: ShareStats, logoSrc: string): string {
 
   return `
     <style>
-      .sc { font-family: 'Rubik', 'Segoe UI', sans-serif; direction: rtl; width: 540px; height: 675px; box-sizing: border-box; padding: 36px; display: flex; flex-direction: column; justify-content: space-between; background: linear-gradient(160deg, #ff5a1f 0%, #ff8a3d 55%, #fea619 100%); color: #1e1b19; }
-      .sc-brand { display: flex; align-items: center; gap: 12px; color: #fff; font-size: 26px; font-weight: 700; }
+      .sc { font-family: 'Rubik', 'Segoe UI', sans-serif; direction: rtl; width: 540px; height: 675px; box-sizing: border-box; padding: 36px; display: flex; flex-direction: column; justify-content: space-between; background: ${style.bg}; color: #1e1b19; }
+      .sc-brand { display: flex; align-items: center; gap: 12px; color: ${style.onBg}; font-size: 26px; font-weight: 700; }
       .sc-logo { width: 52px; height: 52px; border-radius: 999px; background: #fff; padding: 4px; box-sizing: border-box; }
-      .sc-panel { background: #fff8f5; border-radius: 32px; padding: 36px 28px; text-align: center; box-shadow: 0 12px 32px rgba(120, 40, 0, 0.25); }
-      .sc-eyebrow { font-size: 26px; font-weight: 600; color: #855300; }
+      .sc-panel { background: ${style.panel}; border-radius: 32px; padding: 36px 28px; text-align: center; box-shadow: 0 12px 32px ${style.panelShadow}; }
+      .sc-eyebrow { font-size: 26px; font-weight: 600; color: ${style.eyebrow}; }
       .sc-big { display: flex; align-items: baseline; justify-content: center; gap: 10px; direction: ltr; margin: 4px 0 14px; }
-      .sc-num { font-size: 104px; font-weight: 700; line-height: 1.05; color: #ae3200; }
-      .sc-unit { font-size: 30px; font-weight: 600; color: #5b4038; }
-      .sc-sub { font-size: 24px; font-weight: 500; line-height: 1.4; margin-top: 10px; color: #5b4038; }
-      .sc-chip { display: inline-block; margin-top: 18px; padding: 6px 22px 14px; line-height: 1.3; border-radius: 999px; background: #d7f0e2; color: #006c49; font-size: 20px; font-weight: 600; }
+      .sc-num { font-size: 104px; font-weight: 700; line-height: 1.05; color: ${style.num}; }
+      .sc-unit { font-size: 30px; font-weight: 600; color: ${style.text}; }
+      .sc-sub { font-size: 24px; font-weight: 500; line-height: 1.4; margin-top: 10px; color: ${style.text}; }
+      .sc-chip { display: inline-block; margin-top: 18px; padding: 6px 22px 14px; line-height: 1.3; border-radius: 999px; background: ${style.chipBg}; color: ${style.chipText}; font-size: 20px; font-weight: 600; }
       .sc-progress { margin-top: 28px; text-align: right; }
-      .sc-progress-head { display: flex; justify-content: space-between; font-size: 16px; font-weight: 600; color: #5b4038; margin-bottom: 8px; }
+      .sc-progress-head { display: flex; justify-content: space-between; font-size: 16px; font-weight: 600; color: ${style.text}; margin-bottom: 8px; }
       .sc-ltr { direction: ltr; }
-      .sc-track { height: 16px; border-radius: 999px; background: #efe0d9; overflow: hidden; }
-      .sc-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #fea619, #ff5a1f); }
-      .sc-footer { text-align: center; color: #fff; font-size: 16px; font-weight: 500; letter-spacing: 0.3px; }
+      .sc-track { height: 16px; border-radius: 999px; background: ${style.track}; overflow: hidden; }
+      .sc-fill { height: 100%; border-radius: 999px; background: ${style.fill}; }
+      .sc-footer { text-align: center; color: ${style.onBg}; font-size: 16px; font-weight: 500; letter-spacing: 0.3px; }
       .sc-footer b { font-weight: 700; }
     </style>
     <div class="sc">
@@ -170,12 +265,17 @@ async function loadLogoPng(): Promise<string> {
 /**
  * Renders the share card to a PNG image (1080x1350).
  * @param stats - numbers to show on the card
+ * @param styleId - background style to use
  * @returns the PNG as a Blob
  * @throws if the browser can't encode the canvas
  */
-export async function generateShareCardBlob(stats: ShareStats): Promise<Blob> {
+export async function generateShareCardBlob(stats: ShareStats, styleId: ShareStyleId = 'sunset'): Promise<Blob> {
+  const style = getShareStyle(styleId);
   const logoSrc = await loadLogoPng();
-  const canvas = await renderHtmlToCanvas(buildShareCardHtml(stats, logoSrc), { scale: 2, backgroundColor: '#ff5a1f' });
+  const canvas = await renderHtmlToCanvas(buildShareCardHtml(stats, logoSrc, style), {
+    scale: 2,
+    backgroundColor: style.canvasBg,
+  });
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('יצירת התמונה נכשלה.'))), 'image/png');
   });

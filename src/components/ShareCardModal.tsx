@@ -2,11 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import type { Profile, WeightEntry } from '../types';
 import {
   SHARE_PERIODS,
+  SHARE_STYLES,
   generateShareCardBlob,
   getShareStats,
+  loadShareStyle,
+  saveShareStyle,
   shareCardBlob,
 } from '../logic/shareCard';
-import type { SharePeriod, ShareStats } from '../logic/shareCard';
+import type { SharePeriod, ShareStats, ShareStyleId } from '../logic/shareCard';
 import Icon from './Icon';
 
 interface Props {
@@ -28,32 +31,39 @@ export default function ShareCardModal({ entries, profile, onClose }: Props) {
   const [period, setPeriod] = useState<SharePeriod>(30);
   // Result is tagged with the stats it was rendered for, so a stale render (from a
   // previous period) is ignored without needing to reset state inside the effect.
-  const [result, setResult] = useState<{ for: ShareStats; blob?: Blob; url?: string; error?: string } | null>(null);
+  const [style, setStyle] = useState<ShareStyleId>(loadShareStyle);
+  const [result, setResult] = useState<{
+    for: ShareStats;
+    style: ShareStyleId;
+    blob?: Blob;
+    url?: string;
+    error?: string;
+  } | null>(null);
   const [status, setStatus] = useState<string | null>(null);
 
   const stats = useMemo(() => getShareStats(entries, profile, period), [entries, profile, period]);
-  const current = result && result.for === stats ? result : null;
+  const current = result && result.for === stats && result.style === style ? result : null;
 
   useEffect(() => {
     if (!stats) return;
     let cancelled = false;
     let url: string | null = null;
 
-    generateShareCardBlob(stats)
+    generateShareCardBlob(stats, style)
       .then((b) => {
         if (cancelled) return;
         url = URL.createObjectURL(b);
-        setResult({ for: stats, blob: b, url });
+        setResult({ for: stats, style, blob: b, url });
       })
       .catch((e) => {
-        if (!cancelled) setResult({ for: stats, error: e instanceof Error ? e.message : 'יצירת התמונה נכשלה.' });
+        if (!cancelled) setResult({ for: stats, style, error: e instanceof Error ? e.message : 'יצירת התמונה נכשלה.' });
       });
 
     return () => {
       cancelled = true;
       if (url) URL.revokeObjectURL(url);
     };
-  }, [stats]);
+  }, [stats, style]);
 
   /**
    * Switches the period and clears the previous share/download confirmation.
@@ -61,6 +71,16 @@ export default function ShareCardModal({ entries, profile, onClose }: Props) {
    */
   function selectPeriod(next: SharePeriod) {
     setPeriod(next);
+    setStatus(null);
+  }
+
+  /**
+   * Switches the card's background style, remembers it, and clears the share confirmation.
+   * @param next - the newly selected style
+   */
+  function selectStyle(next: ShareStyleId) {
+    setStyle(next);
+    saveShareStyle(next);
     setStatus(null);
   }
 
@@ -110,6 +130,26 @@ export default function ShareCardModal({ entries, profile, onClose }: Props) {
               {p.label}
             </button>
           ))}
+        </div>
+
+        <div className="flex items-center justify-between gap-2" role="radiogroup" aria-label="סגנון רקע">
+          <span className="text-xs font-medium text-on-surface-variant">רקע</span>
+          <div className="flex gap-3">
+            {SHARE_STYLES.map((st) => (
+              <button
+                key={st.id}
+                onClick={() => selectStyle(st.id)}
+                role="radio"
+                aria-checked={style === st.id}
+                aria-label={st.label}
+                title={st.label}
+                className={`h-9 w-9 rounded-full border border-outline-variant transition-all ${
+                  style === st.id ? 'ring-2 ring-primary ring-offset-2 ring-offset-surface-container-lowest' : ''
+                }`}
+                style={{ background: st.bg }}
+              />
+            ))}
+          </div>
         </div>
 
         <div className="flex min-h-48 items-center justify-center overflow-hidden rounded-2xl bg-surface-container-low">
