@@ -10,6 +10,17 @@ import {
 } from '../logic/storage';
 import { applyTheme, loadTheme } from '../logic/theme';
 import type { Theme } from '../logic/theme';
+import {
+  DEFAULT_REMINDER,
+  getNotificationPermission,
+  isReminderDue,
+  loadReminder,
+  requestNotificationPermission,
+  saveReminder,
+  showReminderNotification,
+  wasNotifiedToday,
+} from '../logic/reminder';
+import type { ReminderSettings } from '../logic/reminder';
 import { exportEntriesAsCsv, parseCsvToEntries, readFileAsText } from '../logic/dataTransfer';
 
 /**
@@ -23,6 +34,9 @@ export function useAppData() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [entries, setEntries] = useState<WeightEntry[]>([]);
   const [theme, setTheme] = useState<Theme>('light');
+  const [reminder, setReminder] = useState<ReminderSettings>(DEFAULT_REMINDER);
+  const [reminderDue, setReminderDue] = useState(false);
+  const [notificationPermission, setNotificationPermission] = useState(getNotificationPermission);
 
   useEffect(() => {
     setProfile(loadProfile());
@@ -30,7 +44,26 @@ export function useAppData() {
     const t = loadTheme();
     setTheme(t);
     applyTheme(t);
+    setReminder(loadReminder());
   }, []);
+
+  // Re-evaluate on open, on returning to the app, and every minute while it stays open
+  // (there's no background scheduler, so reminders only fire while the app is running).
+  useEffect(() => {
+    /** Recomputes whether the reminder is due and sends today's notification once. */
+    function check() {
+      const due = isReminderDue(reminder, entries);
+      setReminderDue(due);
+      if (due && !wasNotifiedToday()) void showReminderNotification();
+    }
+    check();
+    const interval = setInterval(check, 60_000);
+    document.addEventListener('visibilitychange', check);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', check);
+    };
+  }, [reminder, entries]);
 
   /**
    * Persists the profile.
@@ -99,5 +132,33 @@ export function useAppData() {
     applyTheme(t);
   }
 
-  return { profile, entries, theme, saveProfile, addWeight, deleteEntry, importEntries, exportEntries, changeTheme };
+  /**
+   * Updates and persists the reminder settings. Turning the reminder on asks for
+   * notification permission (once); a refusal still leaves the in-app banner working.
+   */
+  async function changeReminder(next: ReminderSettings) {
+    setReminder(next);
+    try {
+      saveReminder(next);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : String(error));
+    }
+    if (next.enabled) setNotificationPermission(await requestNotificationPermission());
+  }
+
+  return {
+    profile,
+    entries,
+    theme,
+    reminder,
+    reminderDue,
+    notificationPermission,
+    saveProfile,
+    addWeight,
+    deleteEntry,
+    importEntries,
+    exportEntries,
+    changeTheme,
+    changeReminder,
+  };
 }

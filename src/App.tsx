@@ -17,8 +17,21 @@ import AppRoutes from './routes/AppRoutes';
 type ModalState = { mode: 'closed' } | { mode: 'add' } | { mode: 'edit'; entry: WeightEntry };
 
 export default function App() {
-  const { profile, entries, theme, saveProfile, addWeight, deleteEntry, importEntries, exportEntries, changeTheme } =
-    useAppData();
+  const {
+    profile,
+    entries,
+    theme,
+    reminder,
+    reminderDue,
+    notificationPermission,
+    saveProfile,
+    addWeight,
+    deleteEntry,
+    importEntries,
+    exportEntries,
+    changeTheme,
+    changeReminder,
+  } = useAppData();
   const [editingProfile, setEditingProfile] = useState(false);
   const [modal, setModal] = useState<ModalState>({ mode: 'closed' });
 
@@ -66,6 +79,11 @@ export default function App() {
             profile={profile}
             entries={entries}
             theme={theme}
+            reminder={reminder}
+            reminderDue={reminderDue}
+            notificationPermission={notificationPermission}
+            onReminderChange={changeReminder}
+            onAddEntry={() => setModal({ mode: 'add' })}
             onDeleteEntry={deleteEntry}
             onEditEntry={(entry) => setModal({ mode: 'edit', entry })}
             onExport={exportEntries}

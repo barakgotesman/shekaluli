@@ -9,7 +9,7 @@ const ENTRIES_KEY = 'shekaluli:entries';
  * a Hebrew message the UI can show directly, instead of a browser-specific DOMException.
  * @param write - the localStorage.setItem call to attempt
  */
-function writeOrThrowFriendlyError(write: () => void): void {
+export function writeOrThrowFriendlyError(write: () => void): void {
   try {
     write();
   } catch (error) {

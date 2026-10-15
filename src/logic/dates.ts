@@ -3,7 +3,21 @@
  * @returns today's date, YYYY-MM-DD
  */
 export function today(): string {
-  return new Date().toISOString().slice(0, 10);
+  // Built from local date parts: toISOString() is UTC, so it would report yesterday for
+  // the first hours after local midnight (e.g. 00:00-03:00 in Israel).
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${now.getFullYear()}-${month}-${day}`;
+}
+
+/**
+ * Returns the current local time as minutes since local midnight.
+ * @returns minutes since midnight (0-1439)
+ */
+export function nowMinutes(): number {
+  const now = new Date();
+  return now.getHours() * 60 + now.getMinutes();
 }
 
 /**

@@ -50,7 +50,8 @@ src/
     dataTransfer.ts              CSV export and import parsing
     bmi.ts                        BMI math, WHO threshold constants, and entry/latest BMI selectors
     stats.ts                       Period-change, goal-progress-percent, and lowest/highest-entry calculations
-    dates.ts                        ISO -> dd/mm/yyyy display formatting, plus today()
+    dates.ts                        ISO -> dd/mm/yyyy display formatting, plus today() (local time) and nowMinutes()
+    reminder.ts                     Daily weigh-in reminder: settings persistence, "is it due" check, notification + permission helpers
     timeframe.ts                     Date-range filtering for the graph's timeframe tabs
     pdfReport.ts                      Builds and downloads the "share with coach" PDF (StatsPage)
     image.ts                          Downscales/re-encodes an uploaded profile photo to a base64 JPEG
@@ -62,7 +63,7 @@ src/
 - **WeightEntry**: `{ date: 'YYYY-MM-DD', weightKg: number }`, one entry per calendar day (upsert on same date).
 - **Theme**: `'light' | 'dark'`, defaults to light on first run, then sticky once the user picks one in Settings.
 
-Profile and entries are stored as JSON under fixed localStorage keys (`shekaluli:profile`, `shekaluli:entries`); theme under `shekaluli:theme` — see `storage.ts` / `theme.ts`. There is no migration system; if these shapes change, existing localStorage data for early users may need manual clearing.
+Profile and entries are stored as JSON under fixed localStorage keys (`shekaluli:profile`, `shekaluli:entries`); reminder settings (`{enabled, time}`) under `shekaluli:reminder` and the once-per-day notification marker under `shekaluli:reminder-last-notified`; theme under `shekaluli:theme` — see `storage.ts` / `theme.ts`. There is no migration system; if these shapes change, existing localStorage data for early users may need manual clearing.
 
 ## Views and navigation
 
@@ -74,6 +75,10 @@ Tab switching uses `react-router-dom`'s `BrowserRouter` (`/graph`, `/history`, `
 - **Settings** (`/settings`): `SettingsPage`, light/dark theme buttons, edit-profile shortcut, export/import, storage-usage indicator, credit line ("פותח על ידי Barak Gotesman").
 
 Adding a weight entry doesn't have its own view — the "+" button in the bottom nav opens `AddEntryModal` (wrapping `WeightForm`) as an overlay from any screen, defaulting to today's date and pre-filled with today's entry (if any), otherwise the latest logged weight, otherwise the profile's starting weight.
+
+## Daily reminder
+
+Settings has a real on/off toggle plus time picker (default off, 07:30). When enabled, the time has passed, and nothing is logged for today, `useAppData` exposes `reminderDue`, which shows a banner on the Graph page (button opens the add modal) and fires one system notification per day if the user granted permission. There is no backend or background scheduler, so this only runs while the app is open or reopened/foregrounded (re-checked every minute and on `visibilitychange`). If permission is denied the banner still works.
 
 ## BMI zones on the chart
 

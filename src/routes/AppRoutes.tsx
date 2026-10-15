@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import type { Profile, WeightEntry } from '../types';
 import type { Theme } from '../logic/theme';
+import type { ReminderSettings } from '../logic/reminder';
 import GraphPage from '../pages/GraphPage';
 import HistoryPage from '../pages/HistoryPage';
 import StatsPage from '../pages/StatsPage';
@@ -10,6 +11,11 @@ interface Props {
   profile: Profile;
   entries: WeightEntry[];
   theme: Theme;
+  reminder: ReminderSettings;
+  reminderDue: boolean;
+  notificationPermission: NotificationPermission | 'unsupported';
+  onReminderChange: (reminder: ReminderSettings) => void;
+  onAddEntry: () => void;
   onDeleteEntry: (date: string) => void;
   onEditEntry: (entry: WeightEntry) => void;
   onExport: () => void;
@@ -27,6 +33,11 @@ export default function AppRoutes({
   profile,
   entries,
   theme,
+  reminder,
+  reminderDue,
+  notificationPermission,
+  onReminderChange,
+  onAddEntry,
   onDeleteEntry,
   onEditEntry,
   onExport,
@@ -36,7 +47,10 @@ export default function AppRoutes({
 }: Props) {
   return (
     <Routes>
-      <Route path="/graph" element={<GraphPage entries={entries} profile={profile} />} />
+      <Route
+        path="/graph"
+        element={<GraphPage entries={entries} profile={profile} reminderDue={reminderDue} onAddEntry={onAddEntry} />}
+      />
       <Route
         path="/history"
         element={
@@ -56,6 +70,9 @@ export default function AppRoutes({
           <SettingsPage
             theme={theme}
             onThemeChange={onThemeChange}
+            reminder={reminder}
+            notificationPermission={notificationPermission}
+            onReminderChange={onReminderChange}
             onEditProfile={onEditProfile}
             profile={profile}
             entries={entries}

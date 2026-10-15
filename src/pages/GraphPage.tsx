@@ -8,21 +8,29 @@ import WeightChart from '../components/WeightChart';
 interface Props {
   entries: WeightEntry[];
   profile: Profile;
+  reminderDue: boolean;
+  onAddEntry: () => void;
 }
 
 /**
- * Main dashboard view: a trend insight banner, four metric cards (start/goal/current
- * weight and current BMI), the weight-over-time chart, and a progress-to-goal bar.
+ * Main dashboard view: an optional daily-weigh-in reminder, a trend insight banner, four
+ * metric cards (start/goal/current weight and current BMI), the weight-over-time chart,
+ * and a progress-to-goal bar.
  * @param entries - all weight entries, date-sorted ascending
  * @param profile - user profile, used for goal/height context
+ * @param reminderDue - whether to show the "log today's weight" reminder banner
+ * @param onAddEntry - opens the add-weight modal (used by the reminder banner)
  */
-export default function GraphPage({ entries, profile }: Props) {
+export default function GraphPage({ entries, profile, reminderDue, onAddEntry }: Props) {
   const latest = entries[entries.length - 1];
 
   if (entries.length === 0) {
     return (
-      <div className="rounded-2xl bg-surface-container-lowest p-6 text-center text-on-surface-variant shadow-sm">
-        הוסיפו משקל ראשון כדי לראות גרף
+      <div className="flex flex-col gap-4">
+        {reminderDue && <ReminderBanner onAddEntry={onAddEntry} />}
+        <div className="rounded-2xl bg-surface-container-lowest p-6 text-center text-on-surface-variant shadow-sm">
+          הוסיפו משקל ראשון כדי לראות גרף
+        </div>
       </div>
     );
   }
@@ -36,6 +44,7 @@ export default function GraphPage({ entries, profile }: Props) {
 
   return (
     <div className="flex flex-col gap-4 pb-6">
+      {reminderDue && <ReminderBanner onAddEntry={onAddEntry} />}
       {trend.hasData && <InsightBanner deltaKg={trend.deltaKg} />}
 
       <section className="grid grid-cols-2 gap-2">
@@ -94,6 +103,30 @@ export default function GraphPage({ entries, profile }: Props) {
         </div>
       </section>
     </div>
+  );
+}
+
+/**
+ * Banner prompting the user to log today's weight, with a button that opens the add modal.
+ * @param onAddEntry - called when the user taps the action button
+ */
+function ReminderBanner({ onAddEntry }: { onAddEntry: () => void }) {
+  return (
+    <section className="flex items-center gap-3 rounded-2xl bg-primary-fixed p-4 shadow-sm">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-on-primary shadow-sm">
+        <Icon name="alarm" className="text-[20px]" filled />
+      </div>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <span className="text-base font-semibold text-on-surface">הגיע הזמן להתשקל</span>
+        <span className="text-xs text-on-surface-variant">עדיין לא תיעדת את המשקל של היום</span>
+      </div>
+      <button
+        onClick={onAddEntry}
+        className="shrink-0 rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-on-primary transition-all active:scale-[0.98]"
+      >
+        שקול עכשיו
+      </button>
+    </section>
   );
 }
 

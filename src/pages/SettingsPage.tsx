@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import type { Theme } from '../logic/theme';
+import type { ReminderSettings } from '../logic/reminder';
 import type { Profile, WeightEntry } from '../types';
 import { getStorageUsage, STORAGE_WARNING_THRESHOLD_PERCENT } from '../logic/storageQuota';
 import { calculateAge } from '../logic/dates';
@@ -8,6 +9,9 @@ import Icon from '../components/Icon';
 interface Props {
   theme: Theme;
   onThemeChange: (theme: Theme) => void;
+  reminder: ReminderSettings;
+  notificationPermission: NotificationPermission | 'unsupported';
+  onReminderChange: (reminder: ReminderSettings) => void;
   onEditProfile: () => void;
   profile: Profile;
   entries: WeightEntry[];
@@ -18,11 +22,14 @@ interface Props {
 /**
  * Settings screen: real theme (light/dark) picker, profile summary/edit shortcut, real
  * CSV export/import, and a localStorage usage indicator that warns as the
- * browser's storage quota is approached. The preferences toggles (reminder, unit, sound)
- * are inert — they update their own visual state only, since that functionality doesn't
- * exist yet.
+ * browser's storage quota is approached, plus a real daily-reminder toggle/time picker.
+ * The unit and sound toggles are inert — they update their own visual state only, since
+ * that functionality doesn't exist yet.
  * @param theme - currently active theme
  * @param onThemeChange - called with the new theme when the user switches it
+ * @param reminder - current daily reminder settings
+ * @param notificationPermission - browser notification permission, to explain a blocked state
+ * @param onReminderChange - called with the new reminder settings when the user edits them
  * @param onEditProfile - called when the user chooses to edit their personal details
  * @param profile - user profile, shown in the personal-details summary card
  * @param entries - all weight entries, used for export and the storage usage estimate
@@ -32,13 +39,15 @@ interface Props {
 export default function SettingsPage({
   theme,
   onThemeChange,
+  reminder,
+  notificationPermission,
+  onReminderChange,
   onEditProfile,
   profile,
   entries,
   onImportFile,
   onExport,
 }: Props) {
-  const [reminderOn, setReminderOn] = useState(true);
   const [soundOn, setSoundOn] = useState(true);
   const [unit, setUnit] = useState<'kg' | 'lbs'>('kg');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -115,10 +124,33 @@ export default function SettingsPage({
             icon="alarm"
             iconWrap="bg-primary-fixed text-primary"
             title="תזכורת שקילה יומית"
-            subtitle="בבוקר בשעה 07:30"
-            checked={reminderOn}
-            onToggle={() => setReminderOn((v) => !v)}
+            subtitle={reminder.enabled ? `כל יום בשעה ${reminder.time}` : 'כבויה'}
+            checked={reminder.enabled}
+            onToggle={() => onReminderChange({ ...reminder, enabled: !reminder.enabled })}
           />
+
+          {reminder.enabled && (
+            <div className="flex flex-col gap-2 rounded-xl bg-surface-container-low p-3">
+              <label className="flex items-center justify-between text-sm text-on-surface">
+                <span>שעת התזכורת</span>
+                <input
+                  type="time"
+                  value={reminder.time}
+                  onChange={(e) => e.target.value && onReminderChange({ ...reminder, time: e.target.value })}
+                  className="rounded-lg bg-surface-container-lowest px-3 py-1.5 text-sm font-medium text-on-surface"
+                />
+              </label>
+              {(notificationPermission === 'denied' || notificationPermission === 'unsupported') && (
+                <div className="flex items-center gap-2 text-[11px] text-on-surface-variant">
+                  <Icon name="info" className="text-[16px]" />
+                  <span>התראות מערכת חסומות או לא נתמכות במכשיר זה. התזכורת תוצג בתוך האפליקציה.</span>
+                </div>
+              )}
+              <div className="text-[11px] text-on-surface-variant">
+                התזכורת מופיעה כשהאפליקציה פתוחה או נפתחת אחרי השעה שנבחרה.
+              </div>
+            </div>
+          )}
 
           <div className="flex items-center justify-between pt-3.5">
             <div className="flex items-center gap-3">
