@@ -37,6 +37,7 @@ src/
     layout/
       Header.tsx                Fixed top app bar: logo/name + avatar (profile photo or placeholder)
       Footer.tsx                 Fixed bottom navigation bar: route tabs (via useLocation/useNavigate) + center "+" add button
+    ShareCardModal.tsx          Stats-page modal: period picker, live PNG preview, share button for the progress card
     AddEntryModal.tsx          Modal overlay wrapping WeightForm, opened from the "+" nav button
     WeightForm.tsx              Date picker + WeightSlider, submits a weight entry
     WeightSlider.tsx             Draggable horizontal ruler for picking a weight value (scale/meter-style UI)
@@ -54,12 +55,14 @@ src/
     reminder.ts                     Daily weigh-in reminder: settings persistence, "is it due" check, notification + permission helpers
     timeframe.ts                     Date-range filtering for the graph's timeframe tabs
     pdfReport.ts                      Builds and downloads the "share with coach" PDF (StatsPage)
+    htmlToCanvas.ts                    Off-screen HTML -> canvas rendering (waits for fonts/images) + `esc()`; shared by the PDF and the share card
+    shareCard.ts                        Share-card stats, HTML template, PNG generation, Web Share / download fallback
     image.ts                          Downscales/re-encodes an uploaded profile photo to a base64 JPEG
 ```
 
 ## Data model
 
-- **Profile** (one per user, onboarding): `age`, `heightCm`, `startWeightKg`, `goalWeightKg`.
+- **Profile** (one per user, onboarding): `name`, `gender`, `birthDate`, `heightCm`, `startWeightKg`, `goalWeightKg`, optional `photoBase64`.
 - **WeightEntry**: `{ date: 'YYYY-MM-DD', weightKg: number }`, one entry per calendar day (upsert on same date).
 - **Theme**: `'light' | 'dark'`, defaults to light on first run, then sticky once the user picks one in Settings.
 
@@ -71,7 +74,7 @@ Tab switching uses `react-router-dom`'s `BrowserRouter` (`/graph`, `/history`, `
 
 - **Graph** (`/graph`, default): summary stat cards (start/goal/current weight, current BMI) + `WeightChart`.
 - **History** (`/history`): `HistoryPage`, entries grouped by year then month (accordion), newest first.
-- **Stats** (`/stats`): `StatsPage`, period-change cards (15d / 1mo / 3mo) and lowest/highest all-time entries.
+- **Stats** (`/stats`): `StatsPage`, lowest/highest records, period-change cards (15d / 1mo / 3mo), goal-progress breakdown, coach PDF export and the shareable progress card.
 - **Settings** (`/settings`): `SettingsPage`, light/dark theme buttons, edit-profile shortcut, export/import, storage-usage indicator, credit line ("פותח על ידי Barak Gotesman").
 
 Adding a weight entry doesn't have its own view — the "+" button in the bottom nav opens `AddEntryModal` (wrapping `WeightForm`) as an overlay from any screen, defaulting to today's date and pre-filled with today's entry (if any), otherwise the latest logged weight, otherwise the profile's starting weight.
@@ -79,6 +82,10 @@ Adding a weight entry doesn't have its own view — the "+" button in the bottom
 ## Daily reminder
 
 Settings has a real on/off toggle plus time picker (default off, 07:30). When enabled, the time has passed, and nothing is logged for today, `useAppData` exposes `reminderDue`, which shows a banner on the Graph page (button opens the add modal) and fires one system notification per day if the user granted permission. There is no backend or background scheduler, so this only runs while the app is open or reopened/foregrounded (re-checked every minute and on `visibilitychange`). If permission is denied the banner still works.
+
+## Shareable progress card
+
+The Stats page's "שיתוף כרטיס התקדמות" row opens `ShareCardModal`: pick a period (15d / month / 3 months / all), see a live preview, and share. `logic/shareCard.ts` builds a 540x675 RTL HTML card with hard-coded brand colors (theme-independent), rasterizes it via `htmlToCanvas.ts` to a 1080x1350 PNG, and shares it with `navigator.share({ files })` where supported, otherwise downloads it. **Privacy rule: the card shows relative numbers only (kg change, %, days, goal progress) — never absolute weight or BMI.** A gain/flat period falls back to a neutral "my journey" headline. The logo SVG is rasterized to a PNG first because html2canvas can't draw SVG `<img>`s reliably. `SHARE_URL` (the address printed on the card) is a constant in `shareCard.ts`.
 
 ## BMI zones on the chart
 

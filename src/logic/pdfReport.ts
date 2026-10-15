@@ -1,5 +1,4 @@
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 import type { Profile, WeightEntry } from '../types';
 import { bmiCategory, getEntryBmi } from './bmi';
 import {
@@ -11,6 +10,7 @@ import {
   lowestEntry,
 } from './stats';
 import { calculateAge, formatDateIL, today } from './dates';
+import { esc, renderHtmlToCanvas } from './htmlToCanvas';
 
 const PERIODS = [
   { label: 'ב-15 הימים האחרונים', days: 15 },
@@ -19,11 +19,6 @@ const PERIODS = [
 ];
 
 const RECENT_ENTRIES_LIMIT = 20;
-
-/** Escapes text before interpolating it into the report's HTML template. */
-function esc(value: string | number): string {
-  return String(value).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
-}
 
 /**
  * Builds the printable report's markup as a self-contained HTML fragment (inline
@@ -170,39 +165,26 @@ export async function generateCoachReportPdf(profile: Profile, entries: WeightEn
     throw new Error('אין נתוני שקילה לייצוא. הוסיפו שקילה לפחות אחת כדי להפיק דוח.');
   }
 
-  const container = document.createElement('div');
-  container.style.position = 'fixed';
-  container.style.top = '0';
-  container.style.left = '-9999px';
-  container.style.zIndex = '-1';
-  container.dir = 'rtl';
-  container.innerHTML = buildReportHtml(profile, sorted);
-  document.body.appendChild(container);
+  const canvas = await renderHtmlToCanvas(buildReportHtml(profile, sorted), { scale: 2, backgroundColor: '#ffffff' });
 
-  try {
-    const canvas = await html2canvas(container, { scale: 2, backgroundColor: '#ffffff' });
+  const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  const imgWidth = pageWidth;
+  const imgHeight = (canvas.height * imgWidth) / canvas.width;
+  const imgData = canvas.toDataURL('image/jpeg', 0.92);
 
-    const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
-    const imgWidth = pageWidth;
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
-    const imgData = canvas.toDataURL('image/jpeg', 0.92);
+  let heightLeft = imgHeight;
+  let position = 0;
+  pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+  heightLeft -= pageHeight;
 
-    let heightLeft = imgHeight;
-    let position = 0;
+  while (heightLeft > 0) {
+    position -= pageHeight;
+    pdf.addPage();
     pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
     heightLeft -= pageHeight;
-
-    while (heightLeft > 0) {
-      position -= pageHeight;
-      pdf.addPage();
-      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-    }
-
-    pdf.save(`shekaluli-דוח-התקדמות-${today()}.pdf`);
-  } finally {
-    document.body.removeChild(container);
   }
+
+  pdf.save(`shekaluli-דוח-התקדמות-${today()}.pdf`);
 }

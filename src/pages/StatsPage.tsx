@@ -11,6 +11,7 @@ import {
 import { formatDateIL } from '../logic/dates';
 import { generateCoachReportPdf } from '../logic/pdfReport';
 import Icon from '../components/Icon';
+import ShareCardModal from '../components/ShareCardModal';
 
 interface Props {
   entries: WeightEntry[];
@@ -32,6 +33,7 @@ const PERIODS = [
  */
 export default function StatsPage({ entries, profile }: Props) {
   const [generatingReport, setGeneratingReport] = useState(false);
+  const [shareCardOpen, setShareCardOpen] = useState(false);
   const sorted = [...entries].sort((a, b) => a.date.localeCompare(b.date));
 
   /** Generates and downloads the coach progress-report PDF. */
@@ -217,6 +219,28 @@ export default function StatsPage({ entries, profile }: Props) {
           <Icon name="chevron_left" className="text-[16px]" />
         </button>
       </section>
+
+      <section className="flex items-center justify-between rounded-2xl bg-surface-container-low p-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-surface-container-highest text-primary">
+            <Icon name="image" className="text-[20px]" />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-sm font-medium text-on-surface">שיתוף כרטיס התקדמות</span>
+            <span className="text-xs text-on-surface-variant">תמונה לשיתוף בווטסאפ ואינסטגרם</span>
+          </div>
+        </div>
+        <button
+          onClick={() => setShareCardOpen(true)}
+          disabled={sorted.length < 2}
+          className="flex items-center gap-1 rounded-full bg-surface-container-lowest px-3.5 py-2 text-xs font-medium text-on-surface shadow-sm disabled:opacity-50"
+        >
+          <span>צור כרטיס</span>
+          <Icon name="chevron_left" className="text-[16px]" />
+        </button>
+      </section>
+
+      {shareCardOpen && <ShareCardModal entries={entries} profile={profile} onClose={() => setShareCardOpen(false)} />}
     </div>
   );
 }
