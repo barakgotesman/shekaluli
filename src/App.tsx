@@ -7,6 +7,7 @@ import OnboardingPage from './pages/OnboardingPage';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
 import AddEntryModal from './components/AddEntryModal';
+import SyncConflictModal from './components/SyncConflictModal';
 import AppRoutes from './routes/AppRoutes';
 
 /**
@@ -28,6 +29,8 @@ export default function App() {
     notificationPermission,
     syncStatus,
     retrySync,
+    conflict,
+    resolveConflict,
     cloudLoaded,
     saveProfile,
     addWeight,
@@ -115,6 +118,8 @@ export default function App() {
         </main>
 
         <Footer onAdd={() => setModal({ mode: 'add' })} />
+
+        {conflict && <SyncConflictModal conflict={conflict} onChoose={resolveConflict} />}
 
         {modal.mode !== 'closed' && (
           <AddEntryModal
