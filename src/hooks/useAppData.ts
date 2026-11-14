@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Profile, WeightEntry } from '../types';
 import {
+  clearLocalData,
   deleteEntry as deleteEntryFromStorage,
   importEntries as importEntriesToStorage,
   loadEntries,
@@ -22,7 +23,7 @@ import {
   wasNotifiedToday,
 } from '../logic/reminder';
 import type { ReminderSettings } from '../logic/reminder';
-import { cancelPendingPush, isDirty, pushNow, schedulePush, subscribeCloudDoc } from '../logic/cloudSync';
+import { cancelPendingPush, getOwner, isDirty, pushNow, schedulePush, setOwner, subscribeCloudDoc } from '../logic/cloudSync';
 import type { SyncStatus } from '../logic/cloudSync';
 import { exportEntriesAsCsv, parseCsvToEntries, readFileAsText } from '../logic/dataTransfer';
 
@@ -49,7 +50,6 @@ export function useAppData(uid: string | null) {
   const [syncStatus, setSyncStatus] = useState<SyncStatus>(() => (isDirty() ? 'pending' : 'synced'));
   // True once the first cloud snapshot arrived for the current sign-in; lets App avoid flashing onboarding to a returning user on a fresh device.
   const [cloudLoaded, setCloudLoaded] = useState(false);
-  const prevUid = useRef<string | null>(null);
   // The first snapshot of a sign-in merges local + cloud; later ones (other devices' edits) replace local so remote deletions propagate.
   const firstSnapshot = useRef(true);
 
@@ -62,21 +62,25 @@ export function useAppData(uid: string | null) {
     setReminder(loadReminder());
   }, []);
 
-  // Cloud sync lifecycle: subscribe while signed in; reset in-memory state on sign-out.
+  // Cloud sync lifecycle: subscribe while signed in. Signing out only stops syncing — the
+  // local data stays so the user continues as a guest without redoing onboarding.
   useEffect(() => {
     if (!uid) {
       cancelPendingPush();
       setCloudLoaded(false);
-      // Only reset on a real sign-out (uid -> null), not on the initial null while auth is still restoring the session.
-      if (prevUid.current) {
-        setProfile(null);
-        setEntries([]);
-        setReminder(DEFAULT_REMINDER);
-      }
-      prevUid.current = null;
       return;
     }
-    prevUid.current = uid;
+    // Local data left by a *different* account must never be merged into this one: start clean
+    // and let the cloud (or onboarding) provide this account's profile. Guest data (no owner)
+    // and this account's own data are kept and synced.
+    const owner = getOwner();
+    if (owner && owner !== uid) {
+      clearLocalData();
+      setProfile(null);
+      setEntries([]);
+      setReminder(DEFAULT_REMINDER);
+    }
+    setOwner(uid);
     firstSnapshot.current = true;
     return subscribeCloudDoc(
       uid,

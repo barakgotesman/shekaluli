@@ -17,6 +17,7 @@ export type SyncStatus = 'synced' | 'pending' | 'error';
 
 const PUSH_DELAY_MS = 1000;
 const DIRTY_KEY = 'shekaluli:cloud-dirty';
+const OWNER_KEY = 'shekaluli:cloud-owner';
 let pushTimer: ReturnType<typeof setTimeout> | undefined;
 // Bumped on every scheduled push so an older write finishing late can't mark newer edits as saved.
 let pushVersion = 0;
@@ -32,6 +33,31 @@ export function isDirty(): boolean {
     return localStorage.getItem(DIRTY_KEY) === '1';
   } catch {
     return false;
+  }
+}
+
+/**
+ * Which account the local data belongs to (the uid of the last account that synced it), or
+ * null for data created as a guest. Lets sign-in tell "my own data" from another account's.
+ * @returns the owner uid, or null if the local data is guest data
+ */
+export function getOwner(): string | null {
+  try {
+    return localStorage.getItem(OWNER_KEY);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Marks the local data as belonging to an account.
+ * @param uid - the account that now owns the local data
+ */
+export function setOwner(uid: string): void {
+  try {
+    localStorage.setItem(OWNER_KEY, uid);
+  } catch {
+    // Without the marker a later account switch would merge instead of reset; rare enough to ignore.
   }
 }
 

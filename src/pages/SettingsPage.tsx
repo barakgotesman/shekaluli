@@ -73,11 +73,11 @@ export default function SettingsPage({
   const usage = useMemo(() => getStorageUsage(), [entries, profile]);
   const isNearLimit = usage.percent >= STORAGE_WARNING_THRESHOLD_PERCENT;
 
-  /** Signs out, first warning that unsaved changes would be lost (sign-out clears this device's local copy). */
+  /** Signs out, first warning that unsaved changes stay only on this device until the next sign-in. */
   function handleSignOut() {
     if (
       syncStatus !== 'synced' &&
-      !window.confirm('יש שינויים שעדיין לא נשמרו בענן. התנתקות תמחק אותם מהמכשיר הזה ולא ניתן יהיה לשחזר אותם. להתנתק בכל זאת?')
+      !window.confirm('יש שינויים שעדיין לא נשמרו בענן. אם תתנתקו עכשיו הם יישארו רק במכשיר הזה ויעלו לענן כשתתחברו שוב לאותו חשבון. להתנתק בכל זאת?')
     ) {
       return;
     }
