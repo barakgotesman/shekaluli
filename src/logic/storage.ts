@@ -21,6 +21,17 @@ export function writeOrThrowFriendlyError(write: () => void): void {
 }
 
 /**
+ * Removes every per-user `shekaluli:*` key (profile, entries, reminder, ...) — called on
+ * sign-out so the next account on this device starts clean. The theme is a device
+ * preference rather than user data, so it is kept.
+ */
+export function clearLocalData(): void {
+  for (const key of Object.keys(localStorage)) {
+    if (key.startsWith('shekaluli:') && key !== 'shekaluli:theme') localStorage.removeItem(key);
+  }
+}
+
+/**
  * Reads the user's profile from localStorage.
  * @returns the saved profile, or null if onboarding hasn't been completed yet
  */

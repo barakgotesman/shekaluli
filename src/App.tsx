@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { WeightEntry } from './types';
+import { useAuth } from './hooks/useAuth';
 import { useAppData } from './hooks/useAppData';
 import { today } from './logic/dates';
 import OnboardingPage from './pages/OnboardingPage';
@@ -17,6 +18,7 @@ import AppRoutes from './routes/AppRoutes';
 type ModalState = { mode: 'closed' } | { mode: 'add' } | { mode: 'edit'; entry: WeightEntry };
 
 export default function App() {
+  const { user, loading: authLoading, error: authError, signIn, signOut } = useAuth();
   const {
     profile,
     entries,
@@ -24,6 +26,8 @@ export default function App() {
     reminder,
     reminderDue,
     notificationPermission,
+    syncStatus,
+    cloudLoaded,
     saveProfile,
     addWeight,
     deleteEntry,
@@ -31,7 +35,7 @@ export default function App() {
     exportEntries,
     changeTheme,
     changeReminder,
-  } = useAppData();
+  } = useAppData(user?.uid ?? null);
   const [editingProfile, setEditingProfile] = useState(false);
   const [modal, setModal] = useState<ModalState>({ mode: 'closed' });
 
@@ -50,11 +54,22 @@ export default function App() {
     setModal({ mode: 'closed' });
   }
 
+  // Wait for auth, and for the first cloud snapshot when a signed-in device has no local profile yet.
+  // Guests (no account) go straight to the app/onboarding.
+  if (authLoading || (user && !profile && !cloudLoaded)) {
+    return <div className="flex min-h-screen items-center justify-center bg-surface" aria-busy="true" />;
+  }
+
   if (!profile || editingProfile) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-surface p-4">
         <OnboardingPage
           initial={profile}
+          defaultName={user?.displayName ?? ''}
+          defaultPhotoUrl={user?.photoURL ?? undefined}
+          signedIn={!!user}
+          onGoogleSignIn={signIn}
+          authError={authError}
           onSave={handleSaveProfile}
           onCancel={profile ? () => setEditingProfile(false) : undefined}
         />
@@ -90,6 +105,10 @@ export default function App() {
             onImportFile={importEntries}
             onThemeChange={changeTheme}
             onEditProfile={() => setEditingProfile(true)}
+            user={user ? { name: user.displayName, email: user.email } : null}
+            syncStatus={syncStatus}
+            onSignOut={signOut}
+            onSignIn={signIn}
           />
         </main>
 

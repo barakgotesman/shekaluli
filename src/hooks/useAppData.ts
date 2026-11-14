@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Profile, WeightEntry } from '../types';
 import {
   deleteEntry as deleteEntryFromStorage,
   importEntries as importEntriesToStorage,
   loadEntries,
   loadProfile,
+  saveEntries,
   saveProfile as saveProfileToStorage,
   upsertEntry,
 } from '../logic/storage';
@@ -21,6 +22,8 @@ import {
   wasNotifiedToday,
 } from '../logic/reminder';
 import type { ReminderSettings } from '../logic/reminder';
+import { cancelPendingPush, pushNow, schedulePush, subscribeCloudDoc } from '../logic/cloudSync';
+import type { SyncStatus } from '../logic/cloudSync';
 import { exportEntriesAsCsv, parseCsvToEntries, readFileAsText } from '../logic/dataTransfer';
 
 /**
@@ -29,14 +32,26 @@ import { exportEntriesAsCsv, parseCsvToEntries, readFileAsText } from '../logic/
  * `logic/dataTransfer.ts` directly — they only call the functions this hook returns.
  * Loads persisted state once on mount (localStorage reads are synchronous, so no
  * loading state is needed) and keeps React state in sync with each mutation.
+ * When `uid` is set (user signed in), localStorage is mirrored to Firestore: local edits are
+ * pushed (debounced) and remote changes are applied to localStorage + state. On the first
+ * snapshot after sign-in, entries from this device are merged with the cloud's (cloud wins
+ * on the same date) so a guest who signs in never loses local weigh-ins; a brand-new cloud
+ * account is seeded from local data. Signed out, it is purely local (guest mode).
+ * @param uid - the signed-in user's id, or null in guest mode
  */
-export function useAppData() {
+export function useAppData(uid: string | null) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [entries, setEntries] = useState<WeightEntry[]>([]);
   const [theme, setTheme] = useState<Theme>('light');
   const [reminder, setReminder] = useState<ReminderSettings>(DEFAULT_REMINDER);
   const [reminderDue, setReminderDue] = useState(false);
   const [notificationPermission, setNotificationPermission] = useState(getNotificationPermission);
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>('synced');
+  // True once the first cloud snapshot arrived for the current sign-in; lets App avoid flashing onboarding to a returning user on a fresh device.
+  const [cloudLoaded, setCloudLoaded] = useState(false);
+  const prevUid = useRef<string | null>(null);
+  // The first snapshot of a sign-in merges local + cloud; later ones (other devices' edits) replace local so remote deletions propagate.
+  const firstSnapshot = useRef(true);
 
   useEffect(() => {
     setProfile(loadProfile());
@@ -46,6 +61,71 @@ export function useAppData() {
     applyTheme(t);
     setReminder(loadReminder());
   }, []);
+
+  // Cloud sync lifecycle: subscribe while signed in; reset in-memory state on sign-out.
+  useEffect(() => {
+    if (!uid) {
+      cancelPendingPush();
+      setCloudLoaded(false);
+      // Only reset on a real sign-out (uid -> null), not on the initial null while auth is still restoring the session.
+      if (prevUid.current) {
+        setProfile(null);
+        setEntries([]);
+        setReminder(DEFAULT_REMINDER);
+      }
+      prevUid.current = null;
+      return;
+    }
+    prevUid.current = uid;
+    firstSnapshot.current = true;
+    return subscribeCloudDoc(
+      uid,
+      (cloud) => {
+        setCloudLoaded(true);
+        if (!cloud) {
+          // New cloud account: upload whatever this device already has (may be nothing).
+          if (loadProfile() || loadEntries().length > 0) {
+            pushNow(uid).then(
+              () => setSyncStatus('synced'),
+              () => setSyncStatus('error'),
+            );
+          }
+          return;
+        }
+        const cloudEntries = cloud.entries ?? [];
+        let needsPush = false;
+        try {
+          let merged = cloudEntries;
+          if (firstSnapshot.current) {
+            const byDate = new Map(loadEntries().map((e) => [e.date, e]));
+            for (const e of cloudEntries) byDate.set(e.date, e);
+            merged = Array.from(byDate.values()).sort((a, b) => a.date.localeCompare(b.date));
+            needsPush = merged.length > cloudEntries.length || (!cloud.profile && !!loadProfile());
+          }
+          if (cloud.profile) saveProfileToStorage(cloud.profile);
+          saveEntries(merged);
+          if (cloud.reminder) saveReminder(cloud.reminder);
+        } catch (error) {
+          alert(error instanceof Error ? error.message : String(error));
+        }
+        firstSnapshot.current = false;
+        if (needsPush) schedulePush(uid, setSyncStatus);
+        setProfile(cloud.profile ?? loadProfile());
+        setEntries(loadEntries());
+        setReminder(loadReminder());
+        setSyncStatus('synced');
+      },
+      () => {
+        setSyncStatus('error');
+        setCloudLoaded(true);
+      },
+    );
+  }, [uid]);
+
+  /** Queues an upload of the current local data to the cloud (no-op while signed out). */
+  function sync() {
+    if (uid) schedulePush(uid, setSyncStatus);
+  }
 
   // Re-evaluate on open, on returning to the app, and every minute while it stays open
   // (there's no background scheduler, so reminders only fire while the app is running).
@@ -77,6 +157,7 @@ export function useAppData() {
       return false;
     }
     setProfile(p);
+    sync();
     return true;
   }
 
@@ -92,6 +173,7 @@ export function useAppData() {
     }
     try {
       setEntries(upsertEntry({ date, weightKg, note: note || undefined }));
+      sync();
     } catch (error) {
       alert(error instanceof Error ? error.message : String(error));
     }
@@ -100,6 +182,7 @@ export function useAppData() {
   /** Removes a weight entry by date and refreshes state from storage. */
   function deleteEntry(date: string) {
     setEntries(deleteEntryFromStorage(date));
+    sync();
   }
 
   /**
@@ -115,6 +198,7 @@ export function useAppData() {
     }
     try {
       setEntries(importEntriesToStorage(parsed));
+      sync();
       alert(`יובאו ${parsed.length} רשומות בהצלחה.`);
     } catch (error) {
       alert(error instanceof Error ? error.message : String(error));
@@ -140,6 +224,7 @@ export function useAppData() {
     setReminder(next);
     try {
       saveReminder(next);
+      sync();
     } catch (error) {
       alert(error instanceof Error ? error.message : String(error));
     }
@@ -153,6 +238,8 @@ export function useAppData() {
     reminder,
     reminderDue,
     notificationPermission,
+    syncStatus,
+    cloudLoaded,
     saveProfile,
     addWeight,
     deleteEntry,

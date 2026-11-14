@@ -1,10 +1,10 @@
 # שקלולי (Shekaluli)
 
-A weight-tracking web app. React + TypeScript + Tailwind CSS (v4), frontend-only, all data persisted in `localStorage`. Built with Vite.
+A weight-tracking web app. React + TypeScript + Tailwind CSS (v4), frontend-only. Data lives in `localStorage` and is mirrored to Firebase (Google sign-in + Firestore). Built with Vite.
 
 ## Purpose
 
-Let a single user log their daily weight, see progress on a graph against WHO BMI zones, browse full history grouped by year/month, view summary statistics, and control app settings (theme). No backend, no auth, no accounts — v1 is a local-only POC.
+Let a single user log their daily weight, see progress on a graph against WHO BMI zones, browse full history grouped by year/month, view summary statistics, and control app settings (theme). No custom backend: Optional Firebase Auth (Google) enables cloud sync; Firestore stores one document per user.
 
 ## Tech stack
 
@@ -13,7 +13,8 @@ Let a single user log their daily weight, see progress on a graph against WHO BM
 - Dark mode uses Tailwind's class-based `dark:` variant, enabled via `@custom-variant dark (&:where(.dark, .dark *));` in `index.css` (Tailwind v4 defaults to OS-preference-based dark mode otherwise)
 - **Recharts** for the weight-over-time line chart
 - **react-router-dom** (`BrowserRouter`) for tab routing — clean URLs (`/settings`, `/history`, ...). Since this serves as static files, the host must rewrite all paths to `index.html` (see `vercel.json` and `public/_redirects` for Vercel/Netlify; other static hosts need an equivalent SPA fallback rule)
-- **localStorage** as the only persistence layer (no server, no database)
+- **Firebase** (`firebase.ts`): **Optional** Google sign-in via Firebase Auth (`hooks/useAuth.ts`): the app works fully as a local-only guest; signing in (button on onboarding and in Settings) turns on cloud backup/sync. Firestore doc `users/{uid}` = `{profile, entries, reminder, updatedAt}`; rules in `firestore.rules` allow only the owner. Config comes from `VITE_FIREBASE_*` env vars (`.env.local` locally, Vercel env vars in production; see `.env.example`).
+- **localStorage** stays the synchronous local cache the UI reads. `useAppData(uid)` pushes every mutation to Firestore (debounced, `logic/cloudSync.ts`) and applies remote snapshots back to localStorage. On the first snapshot after sign-in, local and cloud entries are merged by date (cloud wins on conflicts) and a new cloud account is seeded from local data. Sign-out clears per-user local keys. The Google display name pre-fills the onboarding name field.
 - **jspdf** + **html2canvas** generate the coach progress-report PDF (`logic/pdfReport.ts`): jsPDF has no built-in Hebrew/RTL text shaping, so the report is built as a plain-HTML fragment, rendered off-screen, rasterized with html2canvas, then placed into a paginated jsPDF document as a JPEG image
 - **vite-plugin-pwa** makes the app installable (manifest + auto-updating service worker, `generateSW` mode) — configured entirely in `vite.config.ts`, no extra source files. Icons live in `public/` (`pwa-192.png`, `pwa-512.png`, `pwa-maskable-512.png`), generated from `public/favicon.svg`.
 - UI language is Hebrew, RTL layout (`dir="rtl"` set in `index.html` and `App.tsx`); all displayed dates use Israeli `dd/mm/yyyy` format (`dates.ts`) even though data is stored as ISO `YYYY-MM-DD`
@@ -105,7 +106,7 @@ These are WHO standard adult thresholds — not personalized beyond height.
 - Tab routing uses `react-router-dom`'s `BrowserRouter`, kept intentionally minimal (4 routes + a wildcard redirect) — no data loaders, nested routes, or code-splitting.
 - All Hebrew UI text lives directly in page/component JSX (no i18n layer — not needed for a single-language POC).
 - Keep `components/` presentational; screen-level composition lives in `pages/`; all persisted state and storage/export/import orchestration lives in `hooks/useAppData.ts`, called once from `App.tsx` and passed down as props — pages never import `logic/storage.ts` or `logic/dataTransfer.ts` directly.
-- Don't add a backend, auth, or multi-user support unless explicitly asked — this is intentionally a local-only POC.
+- Don't add a custom backend or other auth providers unless explicitly asked; Firebase Auth + Firestore is the only server-side piece.
 
 ## Coding style
 

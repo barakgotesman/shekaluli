@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from 'react';
 import type { Theme } from '../logic/theme';
 import type { ReminderSettings } from '../logic/reminder';
 import type { Profile, WeightEntry } from '../types';
+import type { SyncStatus } from '../logic/cloudSync';
 import { getStorageUsage, STORAGE_WARNING_THRESHOLD_PERCENT } from '../logic/storageQuota';
 import { calculateAge } from '../logic/dates';
 import Icon from '../components/Icon';
@@ -17,6 +18,10 @@ interface Props {
   entries: WeightEntry[];
   onImportFile: (file: File) => Promise<void>;
   onExport: () => void;
+  user: { name: string | null; email: string | null } | null;
+  syncStatus: SyncStatus;
+  onSignOut: () => void;
+  onSignIn: () => void;
 }
 
 /**
@@ -35,6 +40,10 @@ interface Props {
  * @param entries - all weight entries, used for export and the storage usage estimate
  * @param onImportFile - called with a selected file to import (CSV parsing happens upstream)
  * @param onExport - called when the export button is clicked
+ * @param user - signed-in Google account's name and email, or null in guest mode
+ * @param syncStatus - whether local data is synced with the cloud
+ * @param onSignOut - signs the user out (and clears local data)
+ * @param onSignIn - starts the optional Google sign-in that enables cloud backup/sync
  */
 export default function SettingsPage({
   theme,
@@ -47,6 +56,10 @@ export default function SettingsPage({
   entries,
   onImportFile,
   onExport,
+  user,
+  syncStatus,
+  onSignOut,
+  onSignIn,
 }: Props) {
   const [soundOn, setSoundOn] = useState(true);
   const [unit, setUnit] = useState<'kg' | 'lbs'>('kg');
@@ -71,6 +84,55 @@ export default function SettingsPage({
         <h1 className="text-xl font-bold tracking-tight text-on-surface">הגדרות והעדפות</h1>
         <p className="text-sm text-on-surface-variant">התאם את חוויית המעקב והנתונים האישיים שלך</p>
       </div>
+
+      <section className="flex flex-col gap-3">
+        <SectionTitle icon="account_circle" label="חשבון וסנכרון" />
+        <div className="flex flex-col gap-3 rounded-2xl bg-surface-container-lowest p-4 shadow-sm">
+          {!user ? (
+            <>
+              <p className="text-xs text-on-surface-variant">
+                הנתונים שלך שמורים כרגע רק במכשיר הזה. התחברו עם Google כדי לגבות אותם בענן ולסנכרן בין מכשירים — זה לגמרי אופציונלי.
+              </p>
+              <button
+                onClick={onSignIn}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 px-4 text-sm font-semibold text-on-primary transition-all active:scale-[0.98]"
+              >
+                <Icon name="login" className="text-[18px]" />
+                <span>התחברות עם Google</span>
+              </button>
+            </>
+          ) : (
+          <>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 flex-col">
+              <span className="truncate text-sm font-semibold text-on-surface">{user.name ?? 'משתמש'}</span>
+              <span className="truncate text-xs text-on-surface-variant" dir="ltr">{user.email}</span>
+            </div>
+            <span
+              className={`flex shrink-0 items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                syncStatus === 'error'
+                  ? 'bg-error-container text-error'
+                  : 'bg-secondary-container text-on-secondary-container'
+              }`}
+            >
+              <Icon
+                name={syncStatus === 'synced' ? 'cloud_done' : syncStatus === 'pending' ? 'cloud_sync' : 'cloud_off'}
+                className="text-[14px]"
+              />
+              {syncStatus === 'synced' ? 'מסונכרן' : syncStatus === 'pending' ? 'מסנכרן...' : 'שגיאת סנכרון'}
+            </span>
+          </div>
+          <button
+            onClick={onSignOut}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-surface-container-high py-3 px-4 text-sm font-semibold text-error transition-all hover:bg-surface-container-highest active:scale-[0.98]"
+          >
+            <Icon name="logout" className="text-[18px]" />
+            <span>התנתקות</span>
+          </button>
+          </>
+          )}
+        </div>
+      </section>
 
       <section className="flex flex-col gap-3">
         <SectionTitle icon="palette" label="ערכת נושא ומראה" />
@@ -251,8 +313,8 @@ export default function SettingsPage({
           <div className="flex items-center gap-3 rounded-xl bg-surface-container-low p-3">
             <Icon name="lock" className="text-secondary text-[20px]" />
             <div className="flex flex-col">
-              <span className="text-xs font-semibold text-on-surface">הנתונים מאובטחים מקומית במכשירך</span>
-              <span className="text-[11px] text-on-surface-variant">השקילות אינן מועברות לשום שרת חיצוני</span>
+              <span className="text-xs font-semibold text-on-surface">{user ? 'הנתונים נשמרים בחשבון Google שלך' : 'הנתונים שמורים מקומית במכשירך'}</span>
+              <span className="text-[11px] text-on-surface-variant">{user ? 'השקילות מסונכרנות אוטומטית ונגישות רק לך' : 'התחברות עם Google תאפשר גיבוי וסנכרון בין מכשירים'}</span>
             </div>
           </div>
         </div>

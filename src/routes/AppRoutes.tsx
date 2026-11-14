@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import type { Profile, WeightEntry } from '../types';
 import type { Theme } from '../logic/theme';
 import type { ReminderSettings } from '../logic/reminder';
+import type { SyncStatus } from '../logic/cloudSync';
 import GraphPage from '../pages/GraphPage';
 import HistoryPage from '../pages/HistoryPage';
 import StatsPage from '../pages/StatsPage';
@@ -22,6 +23,10 @@ interface Props {
   onImportFile: (file: File) => Promise<void>;
   onThemeChange: (theme: Theme) => void;
   onEditProfile: () => void;
+  user: { name: string | null; email: string | null } | null;
+  syncStatus: SyncStatus;
+  onSignOut: () => void;
+  onSignIn: () => void;
 }
 
 /**
@@ -44,6 +49,10 @@ export default function AppRoutes({
   onImportFile,
   onThemeChange,
   onEditProfile,
+  user,
+  syncStatus,
+  onSignOut,
+  onSignIn,
 }: Props) {
   return (
     <Routes>
@@ -78,6 +87,10 @@ export default function AppRoutes({
             entries={entries}
             onImportFile={onImportFile}
             onExport={onExport}
+            user={user}
+            syncStatus={syncStatus}
+            onSignOut={onSignOut}
+            onSignIn={onSignIn}
           />
         }
       />

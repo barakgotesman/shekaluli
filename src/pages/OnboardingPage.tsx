@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Profile } from '../types';
 import { bmiCategory, weightToBmi } from '../logic/bmi';
 import { fileToResizedBase64 } from '../logic/image';
@@ -7,6 +7,11 @@ import Icon from '../components/Icon';
 
 interface Props {
   initial: Profile | null;
+  defaultName?: string;
+  defaultPhotoUrl?: string;
+  signedIn?: boolean;
+  onGoogleSignIn?: () => void;
+  authError?: string | null;
   onSave: (profile: Profile) => void;
   onCancel?: () => void;
 }
@@ -16,11 +21,16 @@ interface Props {
  * weight, and goal weight, with a live BMI preview computed from the current inputs.
  * Pre-fills from `initial` when editing an existing profile.
  * @param initial - existing profile to edit, or null for first-time onboarding
+ * @param defaultName - name to pre-fill for first-time onboarding (the Google account's display name)
+ * @param defaultPhotoUrl - Google account photo URL, downloaded and used as the profile photo for first-time onboarding
+ * @param signedIn - whether a Google account is signed in (changes the footer text and hides the sign-in button)
+ * @param onGoogleSignIn - starts the optional Google sign-in (first-time onboarding only)
+ * @param authError - Hebrew error message if the last sign-in attempt failed
  * @param onSave - called with the validated profile when the form is submitted
  * @param onCancel - called when the user cancels editing (omitted during first-time onboarding, since there's nothing to cancel back to)
  */
-export default function OnboardingPage({ initial, onSave, onCancel }: Props) {
-  const [name, setName] = useState(initial?.name ?? '');
+export default function OnboardingPage({ initial, defaultName = '', defaultPhotoUrl, signedIn = false, onGoogleSignIn, authError, onSave, onCancel }: Props) {
+  const [name, setName] = useState(initial?.name ?? defaultName);
   const [gender, setGender] = useState<'male' | 'female'>(initial?.gender ?? 'male');
   const [birthDate, setBirthDate] = useState(initial?.birthDate ?? '');
   const [heightCm, setHeightCm] = useState(initial?.heightCm ?? '');
@@ -43,6 +53,29 @@ export default function OnboardingPage({ initial, onSave, onCancel }: Props) {
       setPhotoError(error instanceof Error ? error.message : String(error));
     }
   }
+
+  // The user may sign in with Google mid-form: fill the name from the account if still empty.
+  useEffect(() => {
+    if (!initial && defaultName) setName((prev) => prev || defaultName);
+  }, [initial, defaultName]);
+
+  // First-time onboarding: adopt the Google account photo (downscaled like an uploaded one).
+  // Best-effort — if the download fails the user just keeps the placeholder avatar. The
+  // functional update avoids overwriting a photo the user picked while this was in flight.
+  useEffect(() => {
+    if (initial || !defaultPhotoUrl) return;
+    let cancelled = false;
+    fetch(defaultPhotoUrl)
+      .then((r) => r.blob())
+      .then((blob) => fileToResizedBase64(new File([blob], 'google-photo', { type: blob.type })))
+      .then((data) => {
+        if (!cancelled) setPhotoBase64((prev) => prev ?? data);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [initial, defaultPhotoUrl]);
 
   // Listed by field so the disabled Save button can explain what's missing, rather than
   // just sitting grayed out — this matters most for profiles saved before name/birthDate
@@ -139,6 +172,21 @@ export default function OnboardingPage({ initial, onSave, onCancel }: Props) {
           </h1>
           <p className="mx-auto max-w-xs text-sm text-on-surface-variant">הגדרת נתוני פתיחה למעקב מותאם אישית ובריא</p>
         </div>
+
+        {!initial && !signedIn && onGoogleSignIn && (
+          <div className="mb-5 flex w-full flex-col items-center gap-1.5">
+            <button
+              type="button"
+              onClick={onGoogleSignIn}
+              className="flex h-[48px] w-full items-center justify-center gap-2 rounded-full border border-outline-variant bg-surface-container-lowest text-sm font-semibold text-on-surface transition-all active:scale-[0.98]"
+            >
+              <Icon name="login" className="text-[20px] text-primary" />
+              <span>התחברות עם Google (אופציונלי)</span>
+            </button>
+            <span className="text-xs text-on-surface-variant">לגיבוי בענן ולסנכרון בין מכשירים. אפשר גם להמשיך בלי.</span>
+            {authError && <span className="text-xs text-error">{authError}</span>}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="w-full space-y-2.5 text-right">
           <label className="flex flex-col gap-1">
@@ -284,7 +332,9 @@ export default function OnboardingPage({ initial, onSave, onCancel }: Props) {
 
         <div className="mt-4 flex items-center justify-center gap-1.5 text-on-surface-variant">
           <Icon name="verified_user" className="text-outline text-[16px]" />
-          <span className="text-xs">הנתונים נשמרים מקומית במכשירך בלבד</span>
+          <span className="text-xs">
+            {signedIn ? 'הנתונים נשמרים בחשבון Google שלך ומסונכרנים אוטומטית' : 'הנתונים נשמרים מקומית במכשירך'}
+          </span>
         </div>
       </div>
     </div>
