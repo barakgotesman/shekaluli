@@ -87,7 +87,10 @@ export function useAppData(uid: string | null) {
           if (loadProfile() || loadEntries().length > 0) {
             pushNow(uid).then(
               () => setSyncStatus('synced'),
-              () => setSyncStatus('error'),
+              (error) => {
+                console.error('[sync] initial push failed', error);
+                setSyncStatus('error');
+              },
             );
           }
           return;
@@ -115,7 +118,8 @@ export function useAppData(uid: string | null) {
         setReminder(loadReminder());
         setSyncStatus('synced');
       },
-      () => {
+      (error) => {
+        console.error('[sync] cloud listener failed', error);
         setSyncStatus('error');
         setCloudLoaded(true);
       },

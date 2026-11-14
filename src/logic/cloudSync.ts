@@ -46,7 +46,10 @@ export function schedulePush(uid: string, onStatus: (s: SyncStatus) => void): vo
   pushTimer = setTimeout(() => {
     pushNow(uid).then(
       () => onStatus('synced'),
-      () => onStatus('error'),
+      (error) => {
+        console.error('[sync] push failed', error);
+        onStatus('error');
+      },
     );
   }, PUSH_DELAY_MS);
 }
