@@ -27,6 +27,7 @@ export default function App() {
     reminderDue,
     notificationPermission,
     syncStatus,
+    retrySync,
     cloudLoaded,
     saveProfile,
     addWeight,
@@ -107,6 +108,7 @@ export default function App() {
             onEditProfile={() => setEditingProfile(true)}
             user={user ? { name: user.displayName, email: user.email } : null}
             syncStatus={syncStatus}
+            onRetrySync={retrySync}
             onSignOut={signOut}
             onSignIn={signIn}
           />

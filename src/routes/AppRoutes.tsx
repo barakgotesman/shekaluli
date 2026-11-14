@@ -25,6 +25,7 @@ interface Props {
   onEditProfile: () => void;
   user: { name: string | null; email: string | null } | null;
   syncStatus: SyncStatus;
+  onRetrySync: () => void;
   onSignOut: () => void;
   onSignIn: () => void;
 }
@@ -51,6 +52,7 @@ export default function AppRoutes({
   onEditProfile,
   user,
   syncStatus,
+  onRetrySync,
   onSignOut,
   onSignIn,
 }: Props) {
@@ -89,6 +91,7 @@ export default function AppRoutes({
             onExport={onExport}
             user={user}
             syncStatus={syncStatus}
+            onRetrySync={onRetrySync}
             onSignOut={onSignOut}
             onSignIn={onSignIn}
           />

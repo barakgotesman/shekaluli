@@ -20,6 +20,7 @@ interface Props {
   onExport: () => void;
   user: { name: string | null; email: string | null } | null;
   syncStatus: SyncStatus;
+  onRetrySync: () => void;
   onSignOut: () => void;
   onSignIn: () => void;
 }
@@ -41,7 +42,8 @@ interface Props {
  * @param onImportFile - called with a selected file to import (CSV parsing happens upstream)
  * @param onExport - called when the export button is clicked
  * @param user - signed-in Google account's name and email, or null in guest mode
- * @param syncStatus - whether local data is synced with the cloud
+ * @param syncStatus - whether local data is synced with the cloud; anything but 'synced' shows an unsaved-changes warning
+ * @param onRetrySync - retries uploading unsaved changes
  * @param onSignOut - signs the user out (and clears local data)
  * @param onSignIn - starts the optional Google sign-in that enables cloud backup/sync
  */
@@ -58,6 +60,7 @@ export default function SettingsPage({
   onExport,
   user,
   syncStatus,
+  onRetrySync,
   onSignOut,
   onSignIn,
 }: Props) {
@@ -69,6 +72,17 @@ export default function SettingsPage({
   // are cheap and this view isn't in a hot render path.
   const usage = useMemo(() => getStorageUsage(), [entries, profile]);
   const isNearLimit = usage.percent >= STORAGE_WARNING_THRESHOLD_PERCENT;
+
+  /** Signs out, first warning that unsaved changes would be lost (sign-out clears this device's local copy). */
+  function handleSignOut() {
+    if (
+      syncStatus !== 'synced' &&
+      !window.confirm('יש שינויים שעדיין לא נשמרו בענן. התנתקות תמחק אותם מהמכשיר הזה ולא ניתן יהיה לשחזר אותם. להתנתק בכל זאת?')
+    ) {
+      return;
+    }
+    onSignOut();
+  }
 
   /** Forwards the chosen file to the parent for import. */
   async function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
@@ -122,8 +136,33 @@ export default function SettingsPage({
               {syncStatus === 'synced' ? 'מסונכרן' : syncStatus === 'pending' ? 'מסנכרן...' : 'שגיאת סנכרון'}
             </span>
           </div>
+          {syncStatus !== 'synced' && (
+            <div
+              role="alert"
+              className={`flex flex-col gap-2 rounded-xl p-3 text-xs ${
+                syncStatus === 'error' ? 'bg-error-container text-error' : 'bg-amber-100 text-amber-900 dark:bg-amber-900/40 dark:text-amber-100'
+              }`}
+            >
+              <div className="flex items-start gap-2">
+                <Icon name={syncStatus === 'error' ? 'error' : 'warning'} className="text-[18px]" />
+                <span className="font-medium">
+                  {syncStatus === 'error'
+                    ? 'השינויים האחרונים לא נשמרו בענן! הם שמורים כרגע רק במכשיר הזה.'
+                    : 'יש שינויים שעדיין לא נשמרו בענן. הם שמורים רק במכשיר הזה עד שהסנכרון יסתיים (אם אין חיבור לאינטרנט הם יישמרו אוטומטית כשיחזור).'}
+                </span>
+              </div>
+              {syncStatus === 'error' && (
+                <button
+                  onClick={onRetrySync}
+                  className="self-start rounded-full bg-error px-4 py-1.5 font-semibold text-on-error active:scale-[0.98]"
+                >
+                  נסו לשמור שוב
+                </button>
+              )}
+            </div>
+          )}
           <button
-            onClick={onSignOut}
+            onClick={handleSignOut}
             className="flex w-full items-center justify-center gap-2 rounded-xl bg-surface-container-high py-3 px-4 text-sm font-semibold text-error transition-all hover:bg-surface-container-highest active:scale-[0.98]"
           >
             <Icon name="logout" className="text-[18px]" />

@@ -22,7 +22,7 @@ import {
   wasNotifiedToday,
 } from '../logic/reminder';
 import type { ReminderSettings } from '../logic/reminder';
-import { cancelPendingPush, pushNow, schedulePush, subscribeCloudDoc } from '../logic/cloudSync';
+import { cancelPendingPush, isDirty, pushNow, schedulePush, subscribeCloudDoc } from '../logic/cloudSync';
 import type { SyncStatus } from '../logic/cloudSync';
 import { exportEntriesAsCsv, parseCsvToEntries, readFileAsText } from '../logic/dataTransfer';
 
@@ -46,7 +46,7 @@ export function useAppData(uid: string | null) {
   const [reminder, setReminder] = useState<ReminderSettings>(DEFAULT_REMINDER);
   const [reminderDue, setReminderDue] = useState(false);
   const [notificationPermission, setNotificationPermission] = useState(getNotificationPermission);
-  const [syncStatus, setSyncStatus] = useState<SyncStatus>('synced');
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>(() => (isDirty() ? 'pending' : 'synced'));
   // True once the first cloud snapshot arrived for the current sign-in; lets App avoid flashing onboarding to a returning user on a fresh device.
   const [cloudLoaded, setCloudLoaded] = useState(false);
   const prevUid = useRef<string | null>(null);
@@ -82,6 +82,12 @@ export function useAppData(uid: string | null) {
       uid,
       (cloud) => {
         setCloudLoaded(true);
+        // Unsaved local edits are newer than anything the cloud has: keep them and push, never overwrite them.
+        if (isDirty()) {
+          if (firstSnapshot.current) schedulePush(uid, setSyncStatus);
+          firstSnapshot.current = false;
+          return;
+        }
         if (!cloud) {
           // New cloud account: upload whatever this device already has (may be nothing).
           if (loadProfile() || loadEntries().length > 0) {
@@ -129,6 +135,11 @@ export function useAppData(uid: string | null) {
   /** Queues an upload of the current local data to the cloud (no-op while signed out). */
   function sync() {
     if (uid) schedulePush(uid, setSyncStatus);
+  }
+
+  /** Retries uploading unsaved changes right away (shown as a button when a sync failed). */
+  function retrySync() {
+    sync();
   }
 
   // Re-evaluate on open, on returning to the app, and every minute while it stays open
@@ -243,6 +254,7 @@ export function useAppData(uid: string | null) {
     reminderDue,
     notificationPermission,
     syncStatus,
+    retrySync,
     cloudLoaded,
     saveProfile,
     addWeight,

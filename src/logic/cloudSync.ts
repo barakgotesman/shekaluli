@@ -16,7 +16,42 @@ export interface CloudDoc {
 export type SyncStatus = 'synced' | 'pending' | 'error';
 
 const PUSH_DELAY_MS = 1000;
+const DIRTY_KEY = 'shekaluli:cloud-dirty';
 let pushTimer: ReturnType<typeof setTimeout> | undefined;
+// Bumped on every scheduled push so an older write finishing late can't mark newer edits as saved.
+let pushVersion = 0;
+
+/**
+ * Whether this device has edits that were never confirmed saved to the cloud. Persisted in
+ * localStorage so it survives a reload/crash: the Settings warning stays up and the edits are
+ * pushed (instead of being overwritten by the cloud copy) on the next sign-in snapshot.
+ * @returns true if there are unsaved local changes
+ */
+export function isDirty(): boolean {
+  try {
+    return localStorage.getItem(DIRTY_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+/** Records that local data has changes the cloud doesn't have yet. */
+function markDirty(): void {
+  try {
+    localStorage.setItem(DIRTY_KEY, '1');
+  } catch {
+    // Quota/private-mode failure: the in-memory status still warns for this session.
+  }
+}
+
+/** Records that the cloud copy now matches local data. */
+function clearDirty(): void {
+  try {
+    localStorage.removeItem(DIRTY_KEY);
+  } catch {
+    // Nothing to do — a stale flag only causes one harmless extra push.
+  }
+}
 
 /**
  * Builds the document to upload from whatever is currently in localStorage.
@@ -41,11 +76,18 @@ export async function pushNow(uid: string): Promise<void> {
  * @param onStatus - receives 'pending' immediately, then 'synced' or 'error' when the write settles
  */
 export function schedulePush(uid: string, onStatus: (s: SyncStatus) => void): void {
+  markDirty();
   onStatus('pending');
   clearTimeout(pushTimer);
+  const version = ++pushVersion;
   pushTimer = setTimeout(() => {
     pushNow(uid).then(
-      () => onStatus('synced'),
+      () => {
+        if (version === pushVersion) {
+          clearDirty();
+          onStatus('synced');
+        }
+      },
       (error) => {
         console.error('[sync] push failed', error);
         onStatus('error');
